@@ -26,6 +26,7 @@ final class LedgerSchemaProvider implements SchemaProvider
         $this->accountBalances($schema);
         $this->accountStatement($schema);
         $this->projectionCheckpoints($schema);
+        $this->consumedEvents($schema);
 
         return $schema;
     }
@@ -96,10 +97,22 @@ final class LedgerSchemaProvider implements SchemaProvider
 
     private function projectionCheckpoints(Schema $schema): void
     {
+        // Generic name-keyed checkpoint table; shared by the projection runner
+        // (name "default") and the outbox relay (name "outbox").
         $table = $schema->createTable('projection_checkpoints');
         $table->addColumn('name', Types::STRING, ['length' => 64]);
         $table->addColumn('position', Types::BIGINT);
         $table->addColumn('updated_at', Types::DATETIMETZ_IMMUTABLE);
         $table->setPrimaryKey(['name']);
+    }
+
+    private function consumedEvents(Schema $schema): void
+    {
+        // Per-consumer idempotency guard so at-least-once delivery is
+        // effectively-once for consumers that act per event.
+        $table = $schema->createTable('consumed_events');
+        $table->addColumn('consumer', Types::STRING, ['length' => 64]);
+        $table->addColumn('event_id', Types::GUID);
+        $table->setPrimaryKey(['consumer', 'event_id']);
     }
 }

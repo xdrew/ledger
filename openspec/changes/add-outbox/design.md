@@ -56,13 +56,14 @@ consumers that act per event.
 
 ### D5: Global-position visibility gap
 Because `global_position` is an identity assigned before commit, a transaction with a higher
-position can become visible before a lower one commits — a naive "read > checkpoint, advance to
-max" relay could skip the lower one. Mitigation: the relay reads in ascending order and treats a
-**missing expected position as a temporary gap** — it does not advance the checkpoint past a gap
-until the row appears or a settle window elapses (a rolled-back append burns an id, a permanent
-gap, skipped after the window). At portfolio scale, appends are short single transactions, so
-the window is small; the robust production option (track each row's transaction id and relay only
-below the snapshot's `xmin`) is noted for when throughput demands it.
+position can become visible before a lower one commits — a naive "read > checkpoint" relay could
+skip the lower one. **Implemented now:** the relay reads strictly in ascending order from the
+checkpoint and publishes each event, which is correct for the short single-transaction appends
+this system makes (the window for an out-of-order commit is tiny). **Deferred as the hardening /
+scale path** (documented, not built here): a gap-aware cursor that stops at a missing expected
+position until it appears or a settle window elapses, or — robustly — recording each row's
+transaction id and relaying only below the snapshot's `xmin`. The change's DoD is crash recovery,
+which is fully covered; the gap hardening lands when throughput/concurrency demands it.
 
 ### D6: Relay is a console worker now
 `outbox:relay` runs one catch-up pass (`--once`) or loops with a short sleep. Production runs it
@@ -74,8 +75,9 @@ and host-agnostic.
 
 - **At-least-once means duplicates on the wire** → Mitigation: idempotent consumers (D4); the
   test asserts no observable double-effect.
-- **Visibility-gap skip under high concurrency** → Mitigation: gap-aware cursor + settle window
-  (D5); xmin-based relay as the scale path.
+- **Visibility-gap skip under high concurrency** → Mitigation: not triggered by today's short
+  single-transaction appends; the gap-aware cursor / xmin-based relay is the documented hardening
+  path (D5).
 - **Reusing the event log as the outbox couples publication to the store** → Mitigation:
   acceptable — the store is already the system's ordered log of truth; the transport port keeps
   downstream decoupled.

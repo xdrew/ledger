@@ -38,6 +38,7 @@ services:
             - '../src/Projections/Projector.php'
             - '../src/Projections/Query/AccountBalance.php'
             - '../src/Projections/Query/StatementEntry.php'
+            - '../src/Outbox/EventPublisher.php'
 
     # Ports -> default adapters.
     App\SharedKernel\Clock\Clock: '@App\SharedKernel\Clock\SystemClock'
@@ -70,3 +71,6 @@ services:
     App\Projections\ProjectionRunner:
         arguments:
             $projectors: !tagged_iterator app.projector
+
+    # Outbox transport: Postgres LISTEN/NOTIFY by default (NATS swaps in here).
+    App\Outbox\EventPublisher: '@App\Outbox\PostgresNotifyEventPublisher'
