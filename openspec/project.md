@@ -16,7 +16,7 @@ ops wrapping — without any UI.
 - Idempotency of mutating requests
 - Read projections (balances, statement; rebuildable)
 - Transactional outbox for reliable event publication
-- HTTP API (OpenAPI 3.1, RFC 9457 errors)
+- HTTP API (OpenAPI 3.1, JSON error envelope; travel-project conventions)
 - Full ops wrapping: observability, deployment, CI
 
 **Explicitly out of scope (non-goals):**
@@ -108,7 +108,7 @@ ops wrapping — without any UI.
 | `idempotency`   | Dedup of mutating requests via Idempotency-Key                      |
 | `projections`   | Read models (balances, statement); rebuildable                      |
 | `outbox`        | Transactional outbox + relay worker                                 |
-| `api`           | HTTP surface, OpenAPI 3.1, RFC 9457 errors                          |
+| `api`           | HTTP surface, OpenAPI 3.1, JSON error envelope (travel conventions) |
 | `observability` | Health, metrics, traces, structured logs, dashboards               |
 | `deployment`    | Docker, docker compose, Kubernetes/Helm                             |
 | `ci`            | Pipeline: lint, static analysis, tests, spec-validate gate, image  |
