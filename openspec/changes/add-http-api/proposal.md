@@ -4,7 +4,7 @@ Everything built so far has no outward surface. This change adds the **HTTP API*
 accounts, deposit, transfer, and read balances/statements — built with the **same conventions as
 the travel project**: invokable `Action` controllers in per-endpoint directories, attribute
 routing, request/response DTOs, a reflection-based **OpenAPI 3.1** generator (no `nelmio`/
-`swagger-php`), a kernel exception listener that renders a JSON error envelope, and **RoadRunner**
+`swagger-php`), a kernel exception listener that renders **RFC 9457** problem+json errors, and **RoadRunner**
 (via `baldinof/roadrunner-bundle`) as the app server. Mutating requests dispatch ledger commands
 through the message bus (`add-message-bus`) and are made idempotent with the existing
 `IdempotencyStore`; reads go straight to projections.
@@ -31,10 +31,11 @@ through the message bus (`add-message-bus`) and are made idempotent with the exi
   `IdempotencyStore` (a ledger-specific addition travel does not have): replay a completed key,
   `409` in-flight, `422` reused-key-different-payload. Implemented as a kernel listener in the same
   style as the other cross-cutting listeners.
-- **Error handling** the travel way: an `ApiExceptionListener` maps throwables to HTTP status via a
-  `match()` and renders a small JSON envelope (`{ "message": ... }`, plus field errors for
-  validation), **not** RFC 9457 problem+json. Because every ledger domain exception extends
-  `\RuntimeException`, the mapping is explicit per exception (e.g. `*NotFound` → `404`,
+- **Error handling**: an `ApiExceptionListener` (travel's listener mechanism) maps throwables to
+  HTTP status via a `match()` and renders **RFC 9457** `application/problem+json`
+  (`type`/`title`/`status`/`detail`, plus an `errors` member for validation). Because every ledger
+  domain exception extends `\RuntimeException`, the mapping is explicit per exception (e.g.
+  `*NotFound` → `404`,
   `InsufficientFunds`/`AccountNotActive`/transition errors → `409`/`422`, `ConcurrencyConflict` →
   `409`, validation → `422`, else `500`).
 - **Request validation** with typed `Request` DTOs (`#[MapRequestPayload]` + `symfony/validator`
@@ -53,8 +54,9 @@ through the message bus (`add-message-bus`) and are made idempotent with the exi
 
 ### New Capabilities
 - `api`: the HTTP surface served by RoadRunner — account/transfer/statement endpoints dispatched
-  via the message bus, with API-key auth, idempotent mutations, request validation, a JSON error
-  envelope, and an attribute-generated OpenAPI 3.1 contract. Conventions follow the travel project.
+  via the message bus, with API-key auth, idempotent mutations, request validation, RFC 9457
+  problem+json errors, and an attribute-generated OpenAPI 3.1 contract. Conventions follow the
+  travel project (errors use RFC 9457 rather than travel's plain envelope).
 
 ### Modified Capabilities
 <!-- None at the spec level; composes existing capabilities through the message bus. -->

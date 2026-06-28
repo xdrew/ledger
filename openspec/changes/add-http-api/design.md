@@ -10,16 +10,16 @@ stay tiny and carry only their OpenAPI attributes.
 Constraints from `project.md`: RoadRunner is the app server; CQRS via the message bus; single
 API-key auth; the domain stays framework-free (all Symfony lives in `App\Api` and
 `App\Infrastructure`). Where travel's choices are domain-specific (bearer JWT for human users; a
-plain error envelope) we adapt them to the ledger (an API key for a service backend) and otherwise
-copy travel verbatim.
+plain `{ message }` error envelope) we adapt them to the ledger (an API key for a service backend;
+RFC 9457 problem+json errors) and otherwise copy travel verbatim.
 
 ## Goals / Non-Goals
 
 **Goals:**
 - The six business endpoints + `health` + `openapi`, dispatched via the bus / query views,
   returning JSON, served under RoadRunner.
-- API-key auth via the Symfony firewall, idempotent mutations, request validation, a JSON error
-  envelope.
+- API-key auth via the Symfony firewall, idempotent mutations, request validation, RFC 9457
+  problem+json errors.
 - An OpenAPI 3.1 document generated from `Action` attributes, served and checked by a contract test.
 - Runnable via `docker compose up` (`rr serve`) and testable on Symfony's HTTP kernel
   (`WebTestCase`), no running RoadRunner needed for the suite.
@@ -67,10 +67,13 @@ invokable controllers), consistent with the existing project config.
 - **Errors**: an `ApiExceptionListener` (travel's `KernelEvents::EXCEPTION` listener) maps
   throwables to status via `match()` and renders the envelope.
 
-### D5: Error envelope is travel's JSON shape, not RFC 9457
-The listener renders `{ "message": "<safe message>" }` (adding `{ "errors": [...] }` with field
-violations for validation failures), matching travel — **not** `application/problem+json`. Because
-every ledger domain exception extends `\RuntimeException` (travel relies on `\DomainException`/
+### D5: Errors are RFC 9457 problem+json
+We keep travel's listener mechanism (a `KernelEvents::EXCEPTION` listener with a `match()` mapping)
+but render **RFC 9457 `application/problem+json`** rather than travel's plain `{ "message": ... }`
+envelope — the user opted for RFC 9457 for the ledger. Each error is
+`{ "type", "title", "status", "detail" }`; validation failures add an `errors` member listing the
+offending fields. `500` replaces `detail` with a generic string so no internals leak. Because every
+ledger domain exception extends `\RuntimeException` (travel relies on `\DomainException`/
 `\InvalidArgumentException`, which the ledger does not use), the `match()` lists ledger exceptions
 explicitly:
 
@@ -82,11 +85,11 @@ explicitly:
 | `AccountNotFound`, `TransferNotFound`, `JournalEntryNotFound` | `404` |
 | `InsufficientFunds`, `AccountNotActive`, `ClosedAccountPosting`, `InvalidTransferTransition`, `TransferNotReversible`, `ConcurrencyConflict` | `409` |
 | `InvalidAmount`, `CurrencyMismatch`, `InvalidLegAmount`, `UnbalancedEntry` | `422` |
-| default | `500` (message replaced with a generic string; no internals leaked) |
+| default | `500` (`detail` replaced with a generic string; no internals leaked) |
 
-- *Alternatives rejected:* RFC 9457 problem+json (the earlier draft; dropped to match travel);
-  marker interfaces on exceptions to enable a generic `match` (heavier; the explicit table is clear
-  and localized to one listener).
+- *Alternatives rejected:* travel's plain `{ "message": ... }` envelope (simpler, but the user
+  chose RFC 9457 for the ledger); marker interfaces on exceptions to enable a generic `match`
+  (heavier; the explicit table is clear and localized to one listener).
 
 ### D6: OpenAPI 3.1 from a custom reflection generator (travel's `OpenApiGenerator`)
 `App\Infrastructure\OpenApi\OpenApiGenerator` reflects over the `Action` classes in `App\Api` and

@@ -23,7 +23,7 @@ The API SHALL return an account's balances via `GET /api/accounts/{id}` from the
 #### Scenario: Reading an unknown account
 
 - **WHEN** `GET /api/accounts/{id}` is called for an unknown id
-- **THEN** the response is `404` with the JSON error envelope
+- **THEN** the response is `404` `application/problem+json`
 
 ### Requirement: Deposit funds
 
@@ -88,7 +88,7 @@ key with `401`.
 #### Scenario: Missing API key
 
 - **WHEN** a request to a protected endpoint is made without the API key header
-- **THEN** the response is `401` with the JSON error envelope and the request is not processed
+- **THEN** the response is `401` `application/problem+json` and the request is not processed
 
 ### Requirement: Idempotent mutating requests
 
@@ -104,33 +104,33 @@ a reused key with a different payload.
 #### Scenario: Reusing a key with a different payload
 
 - **WHEN** a `POST` reuses an idempotency key with a different body
-- **THEN** the response is `422` with the JSON error envelope
+- **THEN** the response is `422` `application/problem+json`
 
-### Requirement: Errors are a JSON envelope
+### Requirement: Errors are RFC 9457 problem+json
 
-The API SHALL return errors as a JSON envelope `{ "message": ... }` (with a `{ "errors": [...] }`
-list of field violations for validation failures), mapping each throwable to an HTTP status, and
-without leaking internal details on `500`.
+The API SHALL return all errors as `application/problem+json` per RFC 9457
+(`type`, `title`, `status`, `detail`; an `errors` member listing field violations for validation
+failures), mapping each throwable to an HTTP status, and without leaking internal details on `500`.
 
 #### Scenario: A not-found error
 
 - **WHEN** a request targets a resource that does not exist
-- **THEN** the response is `404` with a JSON body containing a `message`
+- **THEN** the response is `404` with an `application/problem+json` body carrying `type`, `title`, and `status`
 
 #### Scenario: An unexpected error does not leak internals
 
 - **WHEN** an unexpected exception is raised while handling a request
-- **THEN** the response is `500` with a generic `message` and no stack trace or internal detail
+- **THEN** the response is `500` `application/problem+json` with a generic `detail` and no stack trace or internal detail
 
 ### Requirement: Requests are validated
 
-The API SHALL validate request bodies and reject invalid ones with `422` describing the offending
-fields. Amounts are integer minor units with a currency; never floats.
+The API SHALL validate request bodies and reject invalid ones with `422` `application/problem+json`
+describing the offending fields. Amounts are integer minor units with a currency; never floats.
 
 #### Scenario: Invalid deposit body
 
 - **WHEN** `POST /api/accounts/{id}/deposits` is called with a missing or non-positive amount
-- **THEN** the response is `422` with the offending field in the `errors` list
+- **THEN** the response is `422` `application/problem+json` with the offending field in the `errors` member
 
 ### Requirement: A served OpenAPI 3.1 contract generated from the controllers
 

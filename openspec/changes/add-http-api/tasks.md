@@ -14,7 +14,7 @@
 
 - [ ] 2.1 `ApiKeyAuthenticator` on the Symfony Security firewall: validate the API-key header; `access_control` requires it on `/api/*`; `health`/`openapi` are public. Missing/invalid → `401`.
 - [ ] 2.2 Idempotency listener over mutating routes: `begin` (hash request), replay Completed, `409` InProgress, `422` Mismatch; capture the response and `complete`.
-- [ ] 2.3 `ApiExceptionListener` (`KernelEvents::EXCEPTION`) mapping throwables via `match()` to status and rendering the JSON envelope (`{ message }`, plus `{ errors }` for validation). Explicit cases per the design table (ledger exceptions extend `\RuntimeException`).
+- [ ] 2.3 `ApiExceptionListener` (`KernelEvents::EXCEPTION`) mapping throwables via `match()` to status and rendering RFC 9457 `application/problem+json` (`type`/`title`/`status`/`detail`, plus an `errors` member for validation). Explicit cases per the design table (ledger exceptions extend `\RuntimeException`).
 - [ ] 2.4 `Request` DTOs + `symfony/validator` constraints (`#[MapRequestPayload]`); validation failure → `422` with field details via the error listener.
 
 ## 3. Controllers & endpoints (invokable `Action`, travel layout)
@@ -35,7 +35,7 @@
 - [ ] 5.1 Functional tests per endpoint (`WebTestCase`): open account, deposit, transfer (completed + failed), reads (incl. `404`), statement.
 - [ ] 5.2 Auth tests (missing/invalid key → `401`; public endpoints reachable without a key).
 - [ ] 5.3 Idempotency tests (replay; `409` in-flight; `422` payload mismatch).
-- [ ] 5.4 Validation + error-envelope tests (`422` field shapes; `404`; the `{ message }` shape).
+- [ ] 5.4 Validation + problem+json tests (`422` field shapes; `404`; the `application/problem+json` content type and `type`/`title`/`status`/`detail` shape).
 - [ ] 5.5 A RoadRunner smoke run (server boots and serves `/api/health`).
 
 ## 6. Verification & gate
