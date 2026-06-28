@@ -25,6 +25,11 @@ services:
             - '../src/EventStore/Aggregate/'
             - '../src/Accounts/Domain/'
             - '../src/Ledger/Domain/'
+            - '../src/Idempotency/IdempotencyKey.php'
+            - '../src/Idempotency/StoredResponse.php'
+            - '../src/Idempotency/Ttl.php'
+            - '../src/Idempotency/IdempotencyStore.php'
+            - '../src/Idempotency/Outcome/'
 
     # Ports -> default adapters.
     App\SharedKernel\Clock\Clock: '@App\SharedKernel\Clock\SystemClock'
@@ -32,6 +37,12 @@ services:
     App\Accounts\Domain\AccountRepository: '@App\Accounts\Infrastructure\EventSourcedAccountRepository'
     App\Ledger\Domain\LedgerRepository: '@App\Ledger\Infrastructure\EventSourcedLedgerRepository'
     App\Ledger\Domain\AccountStatusReader: '@App\Ledger\Infrastructure\AccountRepositoryStatusReader'
+    App\Idempotency\IdempotencyStore: '@App\Idempotency\Dbal\DbalIdempotencyStore'
+
+    # Idempotency TTL from the environment (seconds).
+    App\Idempotency\Ttl:
+        factory: ['App\Idempotency\Ttl', 'ofSeconds']
+        arguments: ['%env(int:IDEMPOTENCY_TTL_SECONDS)%']
 
     # Ledger posting service lives in the domain but is a wired service.
     App\Ledger\Domain\JournalPostingService:
