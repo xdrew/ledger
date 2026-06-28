@@ -1,0 +1,131 @@
+## ADDED Requirements
+
+### Requirement: Open an account
+
+The API SHALL open an account via `POST /accounts` with a currency, returning `201` with the new
+account's id and currency.
+
+#### Scenario: Opening an account
+
+- **WHEN** `POST /accounts` is called with `{ "currency": "USD" }` and a valid API key and idempotency key
+- **THEN** the response is `201` with a JSON body containing the account id and currency `USD`
+
+### Requirement: Read an account balance
+
+The API SHALL return an account's balances via `GET /accounts/{id}` from the read model, or `404`
+if the account is unknown.
+
+#### Scenario: Reading an existing account
+
+- **WHEN** `GET /accounts/{id}` is called for a known account
+- **THEN** the response is `200` with available, reserved, total, and version
+
+#### Scenario: Reading an unknown account
+
+- **WHEN** `GET /accounts/{id}` is called for an unknown id
+- **THEN** the response is `404` problem+json
+
+### Requirement: Deposit funds
+
+The API SHALL accept a deposit via `POST /accounts/{id}/deposits` with a positive amount in the
+account's currency, returning `200`/`201` on success.
+
+#### Scenario: Depositing into an account
+
+- **WHEN** `POST /accounts/{id}/deposits` is called with `{ "amount": 10000, "currency": "USD" }`
+- **THEN** the deposit is applied and the response reflects success
+
+### Requirement: Create a transfer
+
+The API SHALL create a transfer via `POST /transfers` between two accounts for a positive amount,
+running the saga and returning `201` with the transfer's id and terminal status.
+
+#### Scenario: A funded transfer completes
+
+- **WHEN** `POST /transfers` is called for a fully funded source
+- **THEN** the response is `201` with the transfer id and status `completed`
+
+#### Scenario: An underfunded transfer is reported as failed
+
+- **WHEN** `POST /transfers` is called for a source with insufficient funds
+- **THEN** the response is `201` with status `failed` and a failure reason (not an HTTP error)
+
+### Requirement: Read a transfer
+
+The API SHALL return a transfer's status via `GET /transfers/{id}`, or `404` if unknown.
+
+#### Scenario: Reading a transfer
+
+- **WHEN** `GET /transfers/{id}` is called for a known transfer
+- **THEN** the response is `200` with the transfer id and status
+
+### Requirement: Read an account statement
+
+The API SHALL return an account's statement via `GET /accounts/{id}/statement` from the read
+model, ordered by global position.
+
+#### Scenario: Reading a statement
+
+- **WHEN** `GET /accounts/{id}/statement` is called for an account with activity
+- **THEN** the response is `200` with the postings/holds in order
+
+### Requirement: API-key authentication
+
+The API SHALL require a valid API key header on every endpoint and reject a missing or invalid
+key with `401` problem+json.
+
+#### Scenario: Missing API key
+
+- **WHEN** a request is made without the API key header
+- **THEN** the response is `401` problem+json and the request is not processed
+
+### Requirement: Idempotent mutating requests
+
+Every mutating endpoint SHALL require an `Idempotency-Key` header and use it to deduplicate:
+replay the stored response for a completed key, return `409` for an in-flight key, and `422` for
+a reused key with a different payload.
+
+#### Scenario: Replaying a completed request
+
+- **WHEN** the same `POST` is sent twice with the same idempotency key and payload
+- **THEN** the second response is the stored response of the first and the state changes only once
+
+#### Scenario: Reusing a key with a different payload
+
+- **WHEN** a `POST` reuses an idempotency key with a different body
+- **THEN** the response is `422` problem+json
+
+### Requirement: Errors are RFC 9457 problem+json
+
+The API SHALL return all errors as `application/problem+json` per RFC 9457 (type, title, status,
+detail), without leaking internal details.
+
+#### Scenario: A not-found error
+
+- **WHEN** a request targets a resource that does not exist
+- **THEN** the response is `404` with an `application/problem+json` body
+
+### Requirement: Requests are validated
+
+The API SHALL validate request bodies and reject invalid ones with `422` problem+json describing
+the offending fields. Amounts are integer minor units with a currency; never floats.
+
+#### Scenario: Invalid deposit body
+
+- **WHEN** `POST /accounts/{id}/deposits` is called with a missing or non-positive amount
+- **THEN** the response is `422` problem+json identifying the invalid field
+
+### Requirement: Responses conform to a served OpenAPI 3.1 contract
+
+The API SHALL serve an OpenAPI 3.1 document describing its endpoints and schemas, and its
+responses SHALL conform to that document.
+
+#### Scenario: The OpenAPI document is served
+
+- **WHEN** the OpenAPI endpoint is requested
+- **THEN** a valid OpenAPI 3.1 document is returned
+
+#### Scenario: Responses match the contract
+
+- **WHEN** each endpoint is exercised in the contract test
+- **THEN** every response validates against the OpenAPI document
