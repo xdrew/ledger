@@ -10,6 +10,7 @@ services:
             # Value objects / events / exceptions — data, not services.
             - '../src/SharedKernel/Event/DomainEvent.php'
             - '../src/SharedKernel/Event/EventId.php'
+            - '../src/SharedKernel/Money/'
             - '../src/EventStore/StreamId.php'
             - '../src/EventStore/RecordedEvent.php'
             - '../src/EventStore/EventMetadata.php'
@@ -18,7 +19,15 @@ services:
             - '../src/EventStore/Serialization/SerializedEvent.php'
             - '../src/EventStore/Serialization/UnknownEventType.php'
             - '../src/EventStore/Aggregate/'
+            - '../src/Accounts/Domain/'
 
     # Ports -> default adapters.
     App\SharedKernel\Clock\Clock: '@App\SharedKernel\Clock\SystemClock'
     App\EventStore\EventStore: '@App\EventStore\Dbal\DbalEventStore'
+    App\Accounts\Domain\AccountRepository: '@App\Accounts\Infrastructure\EventSourcedAccountRepository'
+
+    # Register account event types on the shared serializer registry.
+    # (Single-context configurator for now; switches to a composable mechanism
+    # when a second bounded context registers its events.)
+    App\EventStore\Serialization\EventTypeRegistry:
+        configurator: ['App\Accounts\Infrastructure\AccountEventTypes', 'registerInto']
