@@ -32,10 +32,12 @@ running RoadRunner — so the suite is fast and the server config is verified by
 - *Alternatives rejected:* PHP-FPM/Apache (the project standardized on RoadRunner); deferring
   RoadRunner to deployment (the reviewer chose to wire it here).
 
-### D2: Controllers dispatch via the command/query buses
-Controllers build a message and dispatch it on the command or query bus from `add-message-bus`;
-they hold no business logic. Writes go on the command bus; reads on the query bus and are
-presented as JSON. This keeps the HTTP layer a pure adapter.
+### D2: Invokable `*Action` controllers dispatching via the buses
+Each endpoint is a single-action invokable `*Action` class with a `#[Route]` on `__invoke`,
+taking a `#[MapRequestPayload]` request DTO (writes) and returning a `JsonSerializable` response
+DTO. `__invoke` builds a command/query and dispatches it on the bus from `add-message-bus`; it
+holds no business logic. This one-class-per-endpoint convention (as in the travel project) is also
+what the OpenAPI generator scans (D6).
 
 ### D3: Cross-cutting concerns as kernel listeners
 - **Auth**: a request listener checks the API-key header; failure → `401` problem+json, short-circuit.
@@ -56,15 +58,20 @@ problem+json listing fields. Money is integer minor units + currency, never floa
 stream, never the write side. Reads are eventually consistent with writes; the contract/e2e tests
 run the projector to catch up before asserting reads.
 
-### D6: OpenAPI 3.1 generated from controller attributes
-Controllers are annotated with OpenAPI attributes (`nelmio/api-doc-bundle`, built on
-`swagger-php`), and the document is generated and served as JSON (`openapi: 3.1.0`). A contract
+### D6: OpenAPI 3.1 from a custom reflection generator (travel-project approach)
+A hand-rolled `OpenApiGenerator` (no `nelmio`/`swagger-php`) reflects over the invokable `*Action`
+controllers in `App\Api` and builds the 3.1 document: it reads each `__invoke`'s `#[Route]`
+(path/methods), path parameters, the `#[MapRequestPayload]` request DTO (→ a component schema from
+its constructor/properties), the `JsonSerializable` return type (→ response schema), and a few
+small attributes — `#[ResponseStatus]` (success code), `#[Tag]`, `#[OpenApiPublic]` (no auth). The
+security scheme is the API key (header). It is served by an `OpenApiAction` at
+`/openapi.{json,yaml}` and written to disk by a `openapi:generate` console command. A contract
 test exercises each endpoint via `WebTestCase` and validates responses against the generated
-document with `league/openapi-psr7-validator`. The annotations live next to the handlers they
-describe, so the contract can't drift from the routes.
+document with `league/openapi-psr7-validator`.
 
-- *Alternatives rejected:* a hand-maintained `openapi.yaml` (reviewer chose attribute generation —
-  keeps spec and code together).
+- *Alternatives rejected:* `nelmio/api-doc-bundle` / `swagger-php` (the reviewer chose the
+  travel-project's dependency-free reflection generator); a hand-maintained `openapi.yaml` (drifts
+  from the code).
 
 ### D7: Transfer endpoint returns the resulting resource
 `POST /transfers` runs the saga synchronously and returns `201` with the transfer resource and its
@@ -75,8 +82,8 @@ request with `status: failed` (not an HTTP error); a retriable `ConcurrencyConfl
 
 - **RoadRunner adds runtime/build moving parts (binary, worker, .rr.yaml)** → Mitigation: tests run
   on the Symfony kernel (no RoadRunner needed); a single smoke run verifies the server boots.
-- **Attribute-generated OpenAPI can under-describe responses** → Mitigation: the contract test fails
-  if a response doesn't validate, forcing the attributes to stay complete.
+- **The reflection generator can under-describe responses** → Mitigation: the contract test fails
+  if a response doesn't validate, forcing the DTOs/attributes to stay complete.
 - **Eventual consistency surprises clients** → Mitigation: documented (ADR-003); reads carry the
   projection `version`; tests catch up explicitly.
 - **Idempotency listener must capture the exact response to replay** → Mitigation: capture status,
@@ -85,4 +92,5 @@ request with `status: failed` (not an HTTP error); a retriable `ConcurrencyConfl
 ## Open Questions
 
 - RoadRunner worker count / config defaults — start minimal; tuned in deployment/observability.
-- OpenAPI 3.1 vs 3.0 from `swagger-php` — target 3.1; fall back to 3.0 if the toolchain lags.
+- How much schema detail the reflection generator infers (enums, nullability, formats) — start
+  with the travel-project coverage; deepen if the contract test demands it.
