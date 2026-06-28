@@ -6,6 +6,8 @@ services:
     _instanceof:
         App\EventStore\Serialization\EventTypeProvider:
             tags: ['app.event_type_provider']
+        App\Projections\Projector:
+            tags: ['app.projector']
 
     App\:
         resource: '../src/'
@@ -33,6 +35,9 @@ services:
             - '../src/Idempotency/Ttl.php'
             - '../src/Idempotency/IdempotencyStore.php'
             - '../src/Idempotency/Outcome/'
+            - '../src/Projections/Projector.php'
+            - '../src/Projections/Query/AccountBalance.php'
+            - '../src/Projections/Query/StatementEntry.php'
 
     # Ports -> default adapters.
     App\SharedKernel\Clock\Clock: '@App\SharedKernel\Clock\SystemClock'
@@ -60,3 +65,8 @@ services:
 
     App\EventStore\Serialization\EventTypeRegistry:
         configurator: ['@App\EventStore\Serialization\EventTypeRegistryConfigurator', 'configure']
+
+    # Projection runner receives every tagged projector.
+    App\Projections\ProjectionRunner:
+        arguments:
+            $projectors: !tagged_iterator app.projector

@@ -136,8 +136,8 @@ final class DbalEventStoreTest extends KernelTestCase
 
         $this->expectException(UniqueConstraintViolationException::class);
         $this->connection->executeStatement(
-            "INSERT INTO events (event_id, stream_type, stream_id, version, event_type, schema_version, payload, occurred_at)
-             VALUES (gen_random_uuid(), 'counter', 'c-1', 1, :type, 1, '{}'::jsonb, now())",
+            "INSERT INTO events (event_id, stream_type, stream_id, version, event_type, schema_version, payload, metadata, occurred_at, recorded_at)
+             VALUES (gen_random_uuid(), 'counter', 'c-1', 1, :type, 1, '{}'::jsonb, '{}'::jsonb, now(), now())",
             ['type' => SomethingHappened::TYPE],
         );
     }

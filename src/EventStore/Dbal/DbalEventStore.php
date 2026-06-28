@@ -29,9 +29,9 @@ final class DbalEventStore implements EventStore
 {
     private const INSERT_SQL = <<<'SQL'
         INSERT INTO events
-            (event_id, stream_type, stream_id, version, event_type, schema_version, payload, metadata, occurred_at)
+            (event_id, stream_type, stream_id, version, event_type, schema_version, payload, metadata, occurred_at, recorded_at)
         VALUES
-            (:event_id, :stream_type, :stream_id, :version, :event_type, :schema_version, CAST(:payload AS JSONB), CAST(:metadata AS JSONB), :occurred_at)
+            (:event_id, :stream_type, :stream_id, :version, :event_type, :schema_version, CAST(:payload AS JSONB), CAST(:metadata AS JSONB), :occurred_at, :recorded_at)
         SQL;
 
     public function __construct(
@@ -76,6 +76,7 @@ final class DbalEventStore implements EventStore
                             'causation_id' => $metadata->causationId,
                         ]),
                         'occurred_at' => $this->clock->now()->format('Y-m-d H:i:s.uP'),
+                        'recorded_at' => $this->clock->now()->format('Y-m-d H:i:s.uP'),
                     ],
                     [
                         'version' => ParameterType::INTEGER,

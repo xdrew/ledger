@@ -2,3 +2,7 @@ doctrine_migrations:
     migrations_paths:
         'DoctrineMigrations': '%kernel.project_dir%/migrations'
     enable_profiler: false
+    # Schema source of truth for `doctrine:migrations:diff` — migrations are
+    # generated from App\Migrations\LedgerSchemaProvider, not hand-authored.
+    services:
+        'Doctrine\Migrations\Provider\SchemaProvider': 'App\Migrations\LedgerSchemaProvider'
