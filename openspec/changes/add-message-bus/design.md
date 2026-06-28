@@ -1,68 +1,76 @@
 ## Context
 
-CQRS dispatch belongs behind a bus so the entry points (HTTP now, workers later) don't call
-application services directly and so cross-cutting concerns (correlation, transactions) live in
-one pipeline. The aggregates, `TransferOrchestrator`, repositories, and projection views already
-exist; this change adds the bus, the messages, the handlers, and correlation propagation.
+CQRS write dispatch belongs behind a bus so entry points don't call application services
+directly and so correlation (and later async transport) live in one pipeline. The aggregates,
+`TransferOrchestrator`, and repositories already exist; this change adds the command bus, the
+handlers, and correlation propagation. Reads are not a bus concern — they hit the projection
+read views directly.
 
-Constraints from `project.md`: CQRS via `thesis/message-bus`; correlation/causation ids
-propagated into events (§6); the domain stays framework-free (handlers live in each context's
-`Application` layer and depend only on ports).
+Key constraint discovered: `thesis/message-bus` is an **async** bus (Pgmq transport, consumer
+runtimes, replies-as-messages); its dispatch is fire-and-forget (`void`) with no synchronous
+request/reply. That is fine here because **only commands use the bus, and commands need no return
+value** — so we use the library's core `Handlers`/`Context` synchronously in-process.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- A command bus and a query bus over `thesis/message-bus`, with handler registration + middleware.
-- Account/transfer command handlers and read-model query handlers.
-- Correlation id carried with a message and written into `EventMetadata` on saves.
-- Fully testable by dispatching messages — no HTTP.
+- A synchronous in-process `CommandBus` over `thesis/message-bus` core.
+- Account/transfer command handlers.
+- Correlation id carried in message `Metadata` and written into `EventMetadata` on save.
+- Fully testable by dispatching commands — no HTTP.
 
-**Non-Goals (later):** HTTP controllers, auth, idempotency, OpenAPI (`add-http-api`); async
-message transport (the outbox already covers cross-process publication); sagas-as-bus-subscribers
-(the transfer orchestrator stays a synchronous service for now).
+**Non-Goals (later):** the async Pgmq/NATS transport + a command worker (a transport swap, no
+handler change); HTTP/controllers; query handlers (queries read views directly — not a bus concern).
 
 ## Decisions
 
-### D1: Two buses — command (void, one handler) and query (returns, one handler)
-A command has exactly one handler and returns nothing meaningful; a query has exactly one handler
-and returns a read result. Two buses make the read/write split explicit and keep middleware
-concerns separate. Handlers are registered by message type (attribute or tag) per the library's
-convention, pinned at implementation against `thesis/message-bus`.
+### D1: Synchronous `CommandBus` over `thesis/message-bus` core (`Handlers` + `Context`)
+`CommandBus::dispatch(object $command, ?string $correlationId = null): void` builds a `Metadata`
+(message id, `conversationId` = correlation, `kind = Command`, origin, createdAt), wraps it in a
+`Context` (with a no-op transaction), and calls the library's `Handlers::handle($command,
+$context)`. We deliberately use only the core handler-routing + context, not the async machinery
+(no `Dispatcher`/`ConsumerRuntime`/Pgmq), so commands run in-process and synchronously.
 
-- *Alternatives rejected:* a single bus for both (blurs CQRS, complicates middleware); Symfony
-  Messenger (the project standardized on `thesis/message-bus`).
+- *Alternatives rejected:* the full async `MessageBus` (Pgmq + consumer runtime — not needed for
+  in-process commands, and offers no synchronous result); an in-house bus or telephantast (the
+  reviewer chose to use thesis); a sync *transport* (unnecessary — only commands use the bus and
+  they return nothing).
 
-### D2: Correlation via a message envelope + middleware
-Each dispatched message carries (or is wrapped with) a correlation id and an optional causation
-id. A middleware establishes the current correlation context; command handlers read it and pass
-an `EventMetadata` into `repository->save(...)`/the orchestrator, so the resulting events record
-the id. If no id is supplied, one is generated at the edge.
+### D2: Commands return nothing; ids are pre-generated; outcomes are read back
+Handlers are `void`. The caller generates the aggregate id (`AccountId::generate()` /
+`TransferId::generate()`), puts it in the command, dispatches, and — if it needs the result —
+reads it from the projection/repository afterwards. This sidesteps the absence of request/reply
+and matches eventual-consistency reads (ADR-003).
 
-- *Alternatives rejected:* a global mutable "current request id" singleton (hidden state, hard to
-  test); threading the id through every method signature (noise) — the envelope + middleware keeps
-  it explicit but unobtrusive.
+### D3: Queries bypass the bus
+Read endpoints call the existing `AccountBalanceView` / `AccountStatementView` and the transfer
+repository directly. There is no query bus — queries returning values were the only thing that
+wanted synchronous request/reply, and reading projections directly is standard CQRS.
 
-### D3: Handlers are thin application services
-`OpenAccount` → `Account::open` + `accounts->save`; `DepositFunds` → load, `deposit`, save;
-`InitiateTransfer` → `TransferOrchestrator::initiate`. Queries: `GetAccountBalance` /
-`GetAccountStatement` → projection views; `GetTransfer` → transfer repository → a read DTO. No
-business logic leaks into handlers — they orchestrate ports.
+### D4: Correlation via message `Metadata` → `EventMetadata`
+`Metadata.conversationId` is the correlation id (`Metadata.id` the message id, `causeId` the
+causation). Account command handlers read these from the `Context` and pass
+`new EventMetadata(correlationId: conversationId, causationId: messageId)` into
+`repository->save(...)`, so the recorded events carry the correlation id. (Threading correlation
+through the transfer saga's many saves is a follow-up; account commands establish the pattern.)
 
-### D4: Idempotency stays at the HTTP edge, not in the bus
-Request deduplication is an HTTP concern (the `Idempotency-Key` header) handled in `add-http-api`.
-The bus does not own idempotency; keeping it at the edge avoids conflating transport-level retries
-with domain dispatch.
+### D5: Thin handlers
+`OpenAccount` → `Account::open` + save; `DepositFunds` → load, `deposit`, save; `InitiateTransfer`
+→ `TransferOrchestrator::initiate`. No business logic in handlers — they orchestrate ports.
 
 ## Risks / Trade-offs
 
-- **`thesis/message-bus` API is sparsely documented** → Mitigation: pin the handler/middleware
-  conventions against the library source at implementation; the design is library-agnostic.
-- **Correlation threading adds a parameter to saves** → Mitigation: `EventMetadata` already exists
-  and is optional on `save()`; handlers pass it, callers without a context pass none.
+- **`thesis/message-bus` is 0.5-dev with a churny async-first API** → Mitigation: we depend only
+  on its stable-ish core (`Handlers`, `Context`, `Metadata`); the surface we use is tiny and
+  wrapped behind our `CommandBus`, so a future API shift touches one class.
+- **Using an async bus synchronously may look unusual** → Mitigation: documented (D1); it is the
+  same library the project will use for async publication later, kept consistent.
+- **Correlation not yet threaded through the transfer saga** → Mitigation: account commands prove
+  the mechanism; saga threading is a small follow-up.
 
 ## Open Questions
 
-- Whether queries return domain/read DTOs or arrays — default to the existing read DTOs
-  (`AccountBalance`, `StatementEntry`) and a small transfer read DTO.
-- Causation id semantics (message-to-event vs event-to-event) — start with correlation only;
-  add causation when the async choreography needs it.
+- Handler registration: explicit constructor wiring of the (currently three) handlers vs. a
+  tagged compiler pass — start explicit; move to a tag when handlers proliferate.
+- When the async transport lands, which commands (if any) become truly async — decided with the
+  worker/deployment work.

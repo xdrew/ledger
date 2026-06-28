@@ -30,6 +30,8 @@ services:
             - '../src/Transfers/Domain/'
             - '../src/Transfers/Application/InitiateTransfer.php'
             - '../src/Transfers/Application/ReverseTransfer.php'
+            - '../src/Accounts/Application/OpenAccount.php'
+            - '../src/Accounts/Application/DepositFunds.php'
             - '../src/Idempotency/IdempotencyKey.php'
             - '../src/Idempotency/StoredResponse.php'
             - '../src/Idempotency/Ttl.php'

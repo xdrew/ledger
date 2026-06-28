@@ -1,40 +1,46 @@
 ## Why
 
-The HTTP API (and later workers) must drive the domain through CQRS — commands mutate via
-aggregates, queries read from projections — dispatched over a message bus, not by calling
-services ad hoc. Building the bus and the command/query handlers as their own change keeps the
-HTTP change thin and lets the dispatch layer be tested without any HTTP. It is also where
-correlation ids start flowing from a request into the events it produces.
+The HTTP API needs to drive writes through CQRS — commands mutate via aggregates → events —
+behind a bus, so entry points don't call application services ad hoc and so cross-cutting
+concerns (correlation, later async transport) live in one place. Building the command bus and
+its handlers as their own change keeps the HTTP change thin and lets dispatch be tested with no
+HTTP. It is also where correlation ids start flowing from a request into the events it produces.
+
+Reads do **not** go through a bus: queries read the projection read models directly (standard
+CQRS). That removes any need for synchronous request/reply, so `thesis/message-bus` fits — used
+**in-process and synchronously** for commands now, swappable to its Pgmq/NATS transport for true
+async later with no handler changes.
 
 ## What Changes
 
-- Integrate **`thesis/message-bus`** as the in-process **command bus** and **query bus**, with a
-  handler-registration convention and a **middleware** pipeline.
-- Add a **correlation middleware** that carries a correlation/causation id with each message and
-  makes it available to handlers, which thread it into `EventMetadata` on aggregate saves
-  (so events, and later logs/traces, share the id).
-- Add **commands + handlers**: `OpenAccount`, `DepositFunds` (accounts) and `InitiateTransfer`
-  (delegates to the `TransferOrchestrator`).
-- Add **queries + handlers**: `GetAccountBalance`, `GetAccountStatement` (projection read models)
-  and `GetTransfer` (transfer repository).
-- Wire it all in DI so a controller (next change) just builds a message and dispatches it.
+- Add **`thesis/message-bus`** and a thin synchronous **`CommandBus`** over its core
+  `Handlers` + `Context` (no Pgmq, no consumer runtime, no request/reply): `dispatch(command)`
+  runs the registered handler in-process.
+- Add **command handlers**: `OpenAccount`, `DepositFunds` (accounts) and reuse the existing
+  `InitiateTransfer` input as the transfer command (handler delegates to `TransferOrchestrator`).
+- **Correlation**: each dispatch carries a conversation (correlation) id in the message
+  `Metadata`; account handlers read it from the `Context` and thread it into `EventMetadata` on
+  save, so the recorded events carry the correlation id.
+- Commands carry no return value; the caller pre-generates ids and (if it needs the outcome)
+  reads it back from projections/repositories afterwards.
+
+Queries are explicitly **out of the bus**: controllers (next change) call the existing read
+views (`AccountBalanceView`, `AccountStatementView`) and the transfer repository directly.
 
 ## Capabilities
 
 ### New Capabilities
-- `messaging`: in-process command/query buses (`thesis/message-bus`) with middleware, the
-  account/transfer command handlers and the read-model query handlers, and correlation-id
-  propagation into event metadata.
+- `messaging`: an in-process synchronous command bus (`thesis/message-bus`) with the account and
+  transfer command handlers and correlation-id propagation into event metadata.
 
 ### Modified Capabilities
-<!-- None at the spec level; handlers compose existing aggregates, orchestrator, and projections. -->
+<!-- None at the spec level; handlers compose existing aggregates and the orchestrator. -->
 
 ## Impact
 
-- **New code:** bus configuration + middleware; `App\Accounts\Application` and
-  `App\Transfers\Application` command/query messages + handlers; a message context carrying the
-  correlation id.
-- **Dependencies (new):** `thesis/message-bus`.
-- **Depends on** accounts, transfers, projections, idempotency-free (idempotency stays at the HTTP
-  edge). No HTTP, no new tables.
-- **Downstream:** `add-http-api` dispatches these commands/queries from controllers.
+- **New code:** `App\Messaging\CommandBus` (+ a no-op transaction marker); `App\Accounts\Application`
+  `OpenAccount`/`DepositFunds` commands + handlers; `App\Transfers\Application\InitiateTransferHandler`.
+- **Dependencies (new):** `thesis/message-bus` (`^0.5@dev` — the thesis-php async bus, used here
+  in-process for commands; pinned dev as it has no stable release yet).
+- **Depends on** accounts, transfers (orchestrator). No HTTP, no new tables. Queries stay direct.
+- **Downstream:** `add-http-api` controllers dispatch these commands and read projections directly.

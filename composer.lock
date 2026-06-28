@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3acdec51269c8dd72ca84c443a3bac96",
+    "content-hash": "554cbb93f3487c4565a4aef5b4eec929",
     "packages": [
         {
             "name": "brick/math",
@@ -1330,16 +1330,16 @@
         },
         {
             "name": "symfony/cache-contracts",
-            "version": "v3.7.0",
+            "version": "v3.7.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/cache-contracts.git",
-                "reference": "225e8a254166bd3442e370c6f50145465db63831"
+                "reference": "9789738bc19af1106dc54d6afba9a0b467516cf2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/cache-contracts/zipball/225e8a254166bd3442e370c6f50145465db63831",
-                "reference": "225e8a254166bd3442e370c6f50145465db63831",
+                "url": "https://api.github.com/repos/symfony/cache-contracts/zipball/9789738bc19af1106dc54d6afba9a0b467516cf2",
+                "reference": "9789738bc19af1106dc54d6afba9a0b467516cf2",
                 "shasum": ""
             },
             "require": {
@@ -1386,7 +1386,7 @@
                 "standards"
             ],
             "support": {
-                "source": "https://github.com/symfony/cache-contracts/tree/v3.7.0"
+                "source": "https://github.com/symfony/cache-contracts/tree/v3.7.1"
             },
             "funding": [
                 {
@@ -1406,7 +1406,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-05T15:33:14+00:00"
+            "time": "2026-06-05T06:23:12+00:00"
         },
         {
             "name": "symfony/config",
@@ -1669,16 +1669,16 @@
         },
         {
             "name": "symfony/deprecation-contracts",
-            "version": "v3.7.0",
+            "version": "v3.7.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/deprecation-contracts.git",
-                "reference": "50f59d1f3ca46d41ac911f97a78626b6756af35b"
+                "reference": "f3202fa1b5097b0af062dc978b32ecf63404e31d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/50f59d1f3ca46d41ac911f97a78626b6756af35b",
-                "reference": "50f59d1f3ca46d41ac911f97a78626b6756af35b",
+                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/f3202fa1b5097b0af062dc978b32ecf63404e31d",
+                "reference": "f3202fa1b5097b0af062dc978b32ecf63404e31d",
                 "shasum": ""
             },
             "require": {
@@ -1716,7 +1716,7 @@
             "description": "A generic function and convention to trigger deprecation notices",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.7.0"
+                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.7.1"
             },
             "funding": [
                 {
@@ -1736,7 +1736,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-04-13T15:52:40+00:00"
+            "time": "2026-06-05T06:23:12+00:00"
         },
         {
             "name": "symfony/doctrine-bridge",
@@ -2085,16 +2085,16 @@
         },
         {
             "name": "symfony/event-dispatcher-contracts",
-            "version": "v3.7.0",
+            "version": "v3.7.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/event-dispatcher-contracts.git",
-                "reference": "ccba7060602b7fed0b03c85bf025257f76d9ef32"
+                "reference": "c7de7a00ffb67842132da02ea92988a39ccd9f4e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/event-dispatcher-contracts/zipball/ccba7060602b7fed0b03c85bf025257f76d9ef32",
-                "reference": "ccba7060602b7fed0b03c85bf025257f76d9ef32",
+                "url": "https://api.github.com/repos/symfony/event-dispatcher-contracts/zipball/c7de7a00ffb67842132da02ea92988a39ccd9f4e",
+                "reference": "c7de7a00ffb67842132da02ea92988a39ccd9f4e",
                 "shasum": ""
             },
             "require": {
@@ -2141,7 +2141,7 @@
                 "standards"
             ],
             "support": {
-                "source": "https://github.com/symfony/event-dispatcher-contracts/tree/v3.7.0"
+                "source": "https://github.com/symfony/event-dispatcher-contracts/tree/v3.7.1"
             },
             "funding": [
                 {
@@ -2161,7 +2161,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-01-05T13:30:16+00:00"
+            "time": "2026-06-05T06:23:12+00:00"
         },
         {
             "name": "symfony/filesystem",
@@ -2304,16 +2304,16 @@
         },
         {
             "name": "symfony/framework-bundle",
-            "version": "v8.1.0",
+            "version": "v8.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/framework-bundle.git",
-                "reference": "6a0953f4fd8b51db6136c2628af99b7193e63256"
+                "reference": "a3ca5c9df0bb88c1378d230570746ef6271c812e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/framework-bundle/zipball/6a0953f4fd8b51db6136c2628af99b7193e63256",
-                "reference": "6a0953f4fd8b51db6136c2628af99b7193e63256",
+                "url": "https://api.github.com/repos/symfony/framework-bundle/zipball/a3ca5c9df0bb88c1378d230570746ef6271c812e",
+                "reference": "a3ca5c9df0bb88c1378d230570746ef6271c812e",
                 "shasum": ""
             },
             "require": {
@@ -2333,7 +2333,7 @@
                 "symfony/polyfill-mbstring": "^1.0",
                 "symfony/polyfill-php85": "^1.33",
                 "symfony/routing": "^7.4|^8.0",
-                "symfony/service-contracts": "^3.7",
+                "symfony/service-contracts": "^3.7.1",
                 "symfony/var-exporter": "^8.1"
             },
             "conflict": {
@@ -2423,7 +2423,7 @@
             "description": "Provides a tight integration between Symfony components and the Symfony full-stack framework",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/framework-bundle/tree/v8.1.0"
+                "source": "https://github.com/symfony/framework-bundle/tree/v8.1.1"
             },
             "funding": [
                 {
@@ -2443,7 +2443,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-29T05:06:50+00:00"
+            "time": "2026-06-27T09:05:56+00:00"
         },
         {
             "name": "symfony/http-foundation",
@@ -3539,16 +3539,16 @@
         },
         {
             "name": "symfony/service-contracts",
-            "version": "v3.7.0",
+            "version": "v3.7.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/service-contracts.git",
-                "reference": "d25d82433a80eba6aa0e6c24b61d7370d99e444a"
+                "reference": "c0a284bab1ed8aa0417e3d69250ab437739563a0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/service-contracts/zipball/d25d82433a80eba6aa0e6c24b61d7370d99e444a",
-                "reference": "d25d82433a80eba6aa0e6c24b61d7370d99e444a",
+                "url": "https://api.github.com/repos/symfony/service-contracts/zipball/c0a284bab1ed8aa0417e3d69250ab437739563a0",
+                "reference": "c0a284bab1ed8aa0417e3d69250ab437739563a0",
                 "shasum": ""
             },
             "require": {
@@ -3602,7 +3602,7 @@
                 "standards"
             ],
             "support": {
-                "source": "https://github.com/symfony/service-contracts/tree/v3.7.0"
+                "source": "https://github.com/symfony/service-contracts/tree/v3.7.1"
             },
             "funding": [
                 {
@@ -3622,7 +3622,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-03-28T09:44:51+00:00"
+            "time": "2026-06-16T09:55:08+00:00"
         },
         {
             "name": "symfony/stopwatch",
@@ -4025,6 +4025,252 @@
                 }
             ],
             "time": "2026-06-09T11:06:24+00:00"
+        },
+        {
+            "name": "thesis/exceptionally",
+            "version": "0.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/thesis-php/exceptionally.git",
+                "reference": "abc628d3604012bdd960b0d4e1852e823156bd22"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/thesis-php/exceptionally/zipball/abc628d3604012bdd960b0d4e1852e823156bd22",
+                "reference": "abc628d3604012bdd960b0d4e1852e823156bd22",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.3"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^12.5.14"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/exceptionally.php"
+                ],
+                "psr-4": {
+                    "Thesis\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "kafkiansky",
+                    "email": "vadimzanfir@gmail.com"
+                },
+                {
+                    "name": "Valentin Udaltsov",
+                    "email": "udaltsov.valentin@gmail.com"
+                },
+                {
+                    "name": "Thesis Team",
+                    "homepage": "https://github.com/orgs/thesis-php/people"
+                }
+            ],
+            "description": "Thesis Exceptionally",
+            "support": {
+                "issues": "https://github.com/thesis-php/exceptionally/issues",
+                "source": "https://github.com/thesis-php/exceptionally/tree/0.3.0"
+            },
+            "funding": [
+                {
+                    "url": "https://www.tinkoff.ru/cf/5MqZQas2dk7",
+                    "type": "custom"
+                }
+            ],
+            "time": "2026-03-30T14:51:44+00:00"
+        },
+        {
+            "name": "thesis/message-bus",
+            "version": "0.5.x-dev",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/thesis-php/message-bus.git",
+                "reference": "9b3655e1a70568e4ffaac4829d2c0e1d49b8dcec"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/thesis-php/message-bus/zipball/9b3655e1a70568e4ffaac4829d2c0e1d49b8dcec",
+                "reference": "9b3655e1a70568e4ffaac4829d2c0e1d49b8dcec",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.4",
+                "psr/log": "^3.0",
+                "thesis/exceptionally": "^0.3.0",
+                "thesis/time-span": "^0.2.3",
+                "thesis/transaction": "^0.1.1"
+            },
+            "require-dev": {
+                "amphp/postgres": "^2.2",
+                "ext-pcntl": "*",
+                "symfony/var-dumper": "^8.0.6",
+                "testo/testo": "^0.10.2",
+                "thesis/amqp": "^1.0",
+                "thesis/pgmq": "^0.1.5",
+                "thesis/sync-once": "^0.1.3"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Thesis\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Valentin Udaltsov",
+                    "email": "udaltsov.valentin@gmail.com"
+                },
+                {
+                    "name": "Thesis Team",
+                    "homepage": "https://github.com/orgs/thesis-php/people"
+                }
+            ],
+            "description": "Thesis Message Bus",
+            "support": {
+                "issues": "https://github.com/thesis-php/message-bus/issues",
+                "source": "https://github.com/thesis-php/message-bus/tree/0.5.x"
+            },
+            "funding": [
+                {
+                    "url": "https://www.tinkoff.ru/cf/5MqZQas2dk7",
+                    "type": "custom"
+                }
+            ],
+            "time": "2026-05-03T21:54:53+00:00"
+        },
+        {
+            "name": "thesis/time-span",
+            "version": "0.2.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/thesis-php/time-span.git",
+                "reference": "fa1840dd5bc44ab142cf757b3d39bb15d6d908a5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/thesis-php/time-span/zipball/fa1840dd5bc44ab142cf757b3d39bb15d6d908a5",
+                "reference": "fa1840dd5bc44ab142cf757b3d39bb15d6d908a5",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.3"
+            },
+            "require-dev": {
+                "bamarni/composer-bin-plugin": "^1.8.2",
+                "phpunit/phpunit": "^12.1.4"
+            },
+            "type": "library",
+            "extra": {
+                "bamarni-bin": {
+                    "bin-links": false,
+                    "forward-command": true,
+                    "target-directory": "tools"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Thesis\\Time\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Valentin Udaltsov",
+                    "email": "udaltsov.valentin@gmail.com"
+                },
+                {
+                    "name": "Thesis Team",
+                    "homepage": "https://github.com/orgs/thesis-php/people"
+                }
+            ],
+            "description": "Thesis TimeSpan",
+            "support": {
+                "issues": "https://github.com/thesis-php/time-span/issues",
+                "source": "https://github.com/thesis-php/time-span/tree/0.2.3"
+            },
+            "funding": [
+                {
+                    "url": "https://www.tinkoff.ru/cf/5MqZQas2dk7",
+                    "type": "custom"
+                }
+            ],
+            "time": "2025-10-06T13:15:45+00:00"
+        },
+        {
+            "name": "thesis/transaction",
+            "version": "0.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/thesis-php/transaction.git",
+                "reference": "4be13ffffe76f9d466ea93fc38f37064b455e6ca"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/thesis-php/transaction/zipball/4be13ffffe76f9d466ea93fc38f37064b455e6ca",
+                "reference": "4be13ffffe76f9d466ea93fc38f37064b455e6ca",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.4"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^12.4",
+                "symfony/var-dumper": "^8.0"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/Transaction/delegate.php"
+                ],
+                "psr-4": {
+                    "Thesis\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "kafkiansky",
+                    "email": "vadimzanfir@gmail.com"
+                },
+                {
+                    "name": "Valentin Udaltsov",
+                    "email": "udaltsov.valentin@gmail.com"
+                },
+                {
+                    "name": "Thesis Team",
+                    "homepage": "https://github.com/orgs/thesis-php/people"
+                }
+            ],
+            "description": "Thesis Transaction",
+            "support": {
+                "issues": "https://github.com/thesis-php/transaction/issues",
+                "source": "https://github.com/thesis-php/transaction/tree/0.1.1"
+            },
+            "funding": [
+                {
+                    "url": "https://www.tinkoff.ru/cf/5MqZQas2dk7",
+                    "type": "custom"
+                }
+            ],
+            "time": "2026-03-10T11:27:28+00:00"
         }
     ],
     "packages-dev": [
@@ -4088,7 +4334,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "thesis/message-bus": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

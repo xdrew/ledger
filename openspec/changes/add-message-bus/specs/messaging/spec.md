@@ -1,33 +1,29 @@
 ## ADDED Requirements
 
-### Requirement: Commands are dispatched to a single handler
+### Requirement: Commands are dispatched synchronously to a single handler
 
-The command bus SHALL dispatch each command to exactly one registered handler and execute it.
+The command bus SHALL dispatch each command to its one registered handler and run it
+synchronously, in-process, returning no value.
 
 #### Scenario: A command reaches its handler
 
 - **WHEN** a registered command is dispatched on the command bus
-- **THEN** its single handler runs and applies the command's effect
+- **THEN** its handler runs in-process and applies the command's effect
 
-#### Scenario: An unregistered command is rejected
+### Requirement: An unregistered command is rejected
+
+The command bus SHALL fail explicitly when dispatching a command that has no registered handler,
+rather than silently doing nothing.
+
+#### Scenario: Dispatching a command with no handler
 
 - **WHEN** a command with no registered handler is dispatched
-- **THEN** dispatch fails with an explicit error rather than silently doing nothing
-
-### Requirement: Queries are dispatched to a single handler and return a result
-
-The query bus SHALL dispatch each query to exactly one registered handler and return that
-handler's result to the caller.
-
-#### Scenario: A query returns read data
-
-- **WHEN** a registered query is dispatched on the query bus
-- **THEN** its handler runs and the result is returned to the caller
+- **THEN** dispatch raises a no-handler error
 
 ### Requirement: Account and transfer commands apply their effects
 
-The bus SHALL handle the `OpenAccount`, `DepositFunds`, and `InitiateTransfer` commands by
-invoking the corresponding aggregate or orchestrator and persisting the result.
+The bus SHALL handle `OpenAccount`, `DepositFunds`, and `InitiateTransfer` by invoking the
+corresponding aggregate or orchestrator and persisting the result.
 
 #### Scenario: Opening then depositing via commands
 
@@ -39,22 +35,12 @@ invoking the corresponding aggregate or orchestrator and persisting the result.
 - **WHEN** `InitiateTransfer` is dispatched for a funded source
 - **THEN** the transfer runs to completion through the orchestrator
 
-### Requirement: Read queries return read-model data
-
-The bus SHALL handle `GetAccountBalance`, `GetAccountStatement`, and `GetTransfer` by returning
-data from the projections or the transfer stream.
-
-#### Scenario: Querying a balance
-
-- **WHEN** `GetAccountBalance` is dispatched for a projected account
-- **THEN** the current available, reserved, and total balances are returned
-
 ### Requirement: Correlation id propagates into recorded events
 
-A command dispatched with a correlation id SHALL cause the events it records to carry that
-correlation id in their metadata.
+When a command is dispatched with a correlation id, the events its handler records SHALL carry
+that correlation id in their metadata.
 
 #### Scenario: Correlation id flows from command to events
 
-- **WHEN** a command is dispatched with a correlation id and records events
-- **THEN** those events' metadata carry the same correlation id
+- **WHEN** `OpenAccount` is dispatched with a correlation id
+- **THEN** the account's recorded events carry that correlation id in their metadata

@@ -1,31 +1,26 @@
-> Depends on accounts, transfers, projections. New dep: thesis/message-bus. No HTTP, no new tables.
+> Depends on accounts, transfers (orchestrator). New dep: thesis/message-bus (used in-process
+> for commands). No HTTP, no new tables. Queries are direct (not part of this change).
 
-## 1. Bus integration
+## 1. Command bus
 
-- [ ] 1.1 Add `thesis/message-bus`; configure a command bus and a query bus with handler registration (attribute/tag convention pinned against the library).
-- [ ] 1.2 Implement a message context carrying a correlation id and a correlation middleware that establishes it per dispatch (generating one if absent).
-- [ ] 1.3 Wire DI: the two buses, middleware, and handler registration.
+- [x] 1.1 Add `thesis/message-bus` (`^0.5@dev`).
+- [x] 1.2 Implement `App\Messaging\CommandBus` over the library's `Handlers` + `Context`: `dispatch(command, ?correlationId)` builds `Metadata` (id, conversationId=correlation, Kind::Command) + a no-op transaction and calls `Handlers::handle` synchronously.
+- [x] 1.3 Wire DI (CommandBus + handlers autowired; command DTOs excluded from the service resource).
 
 ## 2. Commands & handlers
 
-- [ ] 2.1 `OpenAccount` (accountId, currency) → `Account::open` + save (with `EventMetadata` from the correlation context).
-- [ ] 2.2 `DepositFunds` (accountId, Money) → load, `deposit`, save.
-- [ ] 2.3 `InitiateTransfer` (ids, Money) → `TransferOrchestrator::initiate`.
+- [x] 2.1 `OpenAccount` (AccountId, Currency) + handler → `Account::open` + save with `EventMetadata` from the correlation context.
+- [x] 2.2 `DepositFunds` (AccountId, Money) + handler → load, `deposit`, save (with correlation metadata).
+- [x] 2.3 `InitiateTransferHandler` for the existing `InitiateTransfer` input → `TransferOrchestrator::initiate`.
 
-## 3. Queries & handlers
+## 3. Tests
 
-- [ ] 3.1 `GetAccountBalance` (accountId) → `AccountBalanceView`.
-- [ ] 3.2 `GetAccountStatement` (accountId) → `AccountStatementView`.
-- [ ] 3.3 `GetTransfer` (transferId) → transfer repository → a transfer read DTO.
+- [x] 3.1 Command reaches its handler; an unregistered command raises a no-handler error.
+- [x] 3.2 `OpenAccount` + `DepositFunds` via the bus create the account and update its balance.
+- [x] 3.3 `InitiateTransfer` via the bus completes the transfer through the orchestrator.
+- [x] 3.4 Correlation: `OpenAccount` dispatched with a correlation id yields account events whose metadata carry that id.
 
-## 4. Tests
+## 4. Verification & gate
 
-- [ ] 4.1 Command bus: a command reaches its single handler; an unregistered command errors.
-- [ ] 4.2 Query bus: a query returns its handler's result.
-- [ ] 4.3 Handlers: open+deposit via commands updates state; initiate transfer completes; queries return read data.
-- [ ] 4.4 Correlation: a command dispatched with a correlation id yields events whose metadata carry that id.
-
-## 5. Verification & gate
-
-- [ ] 5.1 Confirm CQRS dispatch works end-to-end (command → effect, query → result) without HTTP.
-- [ ] 5.2 Green: php-cs-fixer (phpyh), PHPStan max, unit + integration suites; `openspec validate add-message-bus --strict` passes.
+- [x] 4.1 Confirm synchronous command dispatch works (command → effect) with correlation propagation, no HTTP.
+- [x] 4.2 Green: php-cs-fixer (phpyh), PHPStan max, unit + integration suites; `openspec validate add-message-bus --strict` passes.
