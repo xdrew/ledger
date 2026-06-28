@@ -39,5 +39,5 @@
 
 ## 6. Verification & gate
 
-- [ ] 6.1 Confirm the "done" criteria: OpenAPI validates; contract test asserts responses match the schema.
+- [ ] 6.1 Confirm the "done" criteria: the generated OpenAPI 3.1 document is well-formed and complete; per-endpoint functional tests assert the real response shapes.
 - [ ] 6.2 Green: php-cs-fixer (phpyh), PHPStan max, unit + functional suites; `openspec validate add-http-api --strict` passes.

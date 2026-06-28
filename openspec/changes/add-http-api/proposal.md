@@ -3,8 +3,8 @@
 Everything built so far has no outward surface. This change adds the **HTTP API** — clients open
 accounts, deposit, transfer, and read balances/statements — served by **RoadRunner**, dispatching
 through the message bus, applying idempotency to mutating requests, returning RFC 9457 errors, and
-exposing an **OpenAPI 3.1** contract (generated from controller attributes) that responses are
-tested against.
+exposing an **OpenAPI 3.1** contract generated from the controllers, with response shapes verified
+by per-endpoint functional tests.
 
 ## What Changes
 
