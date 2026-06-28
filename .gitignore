@@ -1,7 +1,6 @@
 /vendor/
 /vendor-bin/*/vendor/
 /var/
-/.idea/
 /.env.local
 /.env.*.local
 /.php-cs-fixer.cache
