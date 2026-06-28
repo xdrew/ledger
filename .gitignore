@@ -3,7 +3,4 @@
 /var/
 /.env.local
 /.env.*.local
-/.php-cs-fixer.cache
-/.phpunit.cache
 /composer.lock.bak
-.phpunit.result.cache

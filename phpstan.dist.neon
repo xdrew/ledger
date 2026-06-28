@@ -7,4 +7,4 @@ parameters:
     # autoloader; let PHPStan discover TestCase and friends for analysing tests/.
     scanDirectories:
         - vendor-bin/phpunit/vendor
-    tmpDir: var/phpstan
+    tmpDir: var/cache/phpstan
