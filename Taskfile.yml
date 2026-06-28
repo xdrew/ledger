@@ -1,0 +1,93 @@
+version: '3'
+
+vars:
+  COMPOSE: docker compose
+  APP: docker compose exec -T app
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  up:
+    desc: Start the stack (PostgreSQL + app container)
+    cmds:
+      - "{{.COMPOSE}} up -d --build"
+
+  down:
+    desc: Stop the stack and remove volumes
+    cmds:
+      - "{{.COMPOSE}} down -v"
+
+  build:
+    desc: Rebuild the app image
+    cmds:
+      - "{{.COMPOSE}} build"
+
+  install:
+    desc: Install Composer dependencies (incl. vendor-bin tools)
+    cmds:
+      - "{{.APP}} composer install"
+
+  tools:
+    desc: Install/update the isolated vendor-bin tools (phpstan, php-cs-fixer, phpunit)
+    cmds:
+      - "{{.APP}} composer bin all install"
+
+  console:
+    desc: Run the Symfony console (pass args after --, e.g. `task console -- debug:container`)
+    cmds:
+      - "{{.APP}} php bin/console {{.CLI_ARGS}}"
+
+  db-ping:
+    desc: Verify database connectivity
+    cmds:
+      - "{{.APP}} php bin/console app:db:ping"
+
+  migrate:
+    desc: Apply pending migrations
+    cmds:
+      - "{{.APP}} php bin/console doctrine:migrations:migrate --no-interaction"
+
+  rollback:
+    desc: Roll back the last migration
+    cmds:
+      - "{{.APP}} php bin/console doctrine:migrations:migrate prev --no-interaction"
+
+  lint:
+    desc: Check code style
+    cmds:
+      - "{{.APP}} vendor/bin/php-cs-fixer fix --dry-run --diff"
+
+  lint:fix:
+    desc: Fix code style
+    cmds:
+      - "{{.APP}} vendor/bin/php-cs-fixer fix"
+
+  analyse:
+    desc: Run PHPStan at max level
+    cmds:
+      - "{{.APP}} vendor/bin/phpstan analyse --memory-limit=512M"
+
+  test:unit:
+    desc: Run the unit suite
+    cmds:
+      - "{{.APP}} vendor/bin/phpunit --testsuite unit"
+
+  test:integration:
+    desc: Run the integration suite
+    cmds:
+      - "{{.APP}} vendor/bin/phpunit --testsuite integration"
+
+  test:
+    desc: Run all tests (unit + integration)
+    cmds:
+      - task: test:unit
+      - task: test:integration
+
+  spec:
+    desc: Validate all OpenSpec changes strictly
+    cmds:
+      - openspec validate --all --strict

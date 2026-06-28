@@ -1,0 +1,50 @@
+{
+    "name": "ledger/ledger-core",
+    "description": "Event-sourced payment ledger — backend core.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.5",
+        "ext-pdo": "*",
+        "doctrine/dbal": "^4.0",
+        "doctrine/doctrine-bundle": "^3.2",
+        "doctrine/doctrine-migrations-bundle": "^4.0",
+        "ramsey/uuid": "^4.7",
+        "symfony/console": "^8.0",
+        "symfony/dotenv": "^8.0",
+        "symfony/framework-bundle": "^8.0",
+        "symfony/monolog-bundle": "^4.0",
+        "symfony/runtime": "^8.0",
+        "symfony/yaml": "^8.0"
+    },
+    "require-dev": {
+        "bamarni/composer-bin-plugin": "^1.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "App\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "symfony/runtime": true,
+            "php-http/discovery": true,
+            "bamarni/composer-bin-plugin": true
+        },
+        "sort-packages": true
+    },
+    "extra": {
+        "bamarni-bin": {
+            "bin-links": true,
+            "forward-command": true,
+            "target-directory": "vendor-bin"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

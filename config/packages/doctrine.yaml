@@ -1,0 +1,7 @@
+# DBAL only — no ORM. Aggregates use the hand-rolled event store; the read side
+# uses DBAL directly. doctrine-bundle gives us a configured Connection service
+# (autowirable as Doctrine\DBAL\Connection) and the DSN from the environment.
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+        charset: utf8

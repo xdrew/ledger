@@ -1,0 +1,44 @@
+name: ledger-core
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ledger
+      POSTGRES_PASSWORD: ledger
+      POSTGRES_DB: ledger
+    ports:
+      # Host port is only for external tooling; the app reaches Postgres over the
+      # internal network. Defaults to 5433 to avoid clashing with a local
+      # PostgreSQL on 5432. Override with POSTGRES_HOST_PORT.
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      # PostgreSQL 18+ images expect the mount at /var/lib/postgresql (the data
+      # then lives in a major-version subdirectory). Mounting .../data directly,
+      # as in older images, makes the entrypoint refuse to start.
+      - pgdata:/var/lib/postgresql
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledger -d ledger"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    working_dir: /app
+    # Console-only app: keep the container alive so `docker compose exec app ...`
+    # can run composer, the console, and the test suites.
+    command: ["tail", "-f", "/dev/null"]
+
+volumes:
+  pgdata:

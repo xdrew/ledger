@@ -1,0 +1,24 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            # Value objects / events / exceptions — data, not services.
+            - '../src/SharedKernel/Event/DomainEvent.php'
+            - '../src/SharedKernel/Event/EventId.php'
+            - '../src/EventStore/StreamId.php'
+            - '../src/EventStore/RecordedEvent.php'
+            - '../src/EventStore/EventMetadata.php'
+            - '../src/EventStore/ConcurrencyConflict.php'
+            - '../src/EventStore/EventStore.php'
+            - '../src/EventStore/Serialization/SerializedEvent.php'
+            - '../src/EventStore/Serialization/UnknownEventType.php'
+            - '../src/EventStore/Aggregate/'
+
+    # Ports -> default adapters.
+    App\SharedKernel\Clock\Clock: '@App\SharedKernel\Clock\SystemClock'
+    App\EventStore\EventStore: '@App\EventStore\Dbal\DbalEventStore'

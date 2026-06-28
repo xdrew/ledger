@@ -1,0 +1,10 @@
+parameters:
+    level: max
+    paths:
+        - src
+        - tests
+    # PHPUnit lives in its own composer-bin namespace, so it is not in the root
+    # autoloader; let PHPStan discover TestCase and friends for analysing tests/.
+    scanDirectories:
+        - vendor-bin/phpunit/vendor
+    tmpDir: var/phpstan

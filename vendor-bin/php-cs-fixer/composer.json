@@ -1,0 +1,5 @@
+{
+    "require": {
+        "phpyh/coding-standard": "^2.6"
+    }
+}

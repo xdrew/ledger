@@ -1,0 +1,8 @@
+# Minimal logging: level from the environment, written to stderr (12-factor).
+# Structured JSON formatting + correlation ids arrive in `add-observability`.
+monolog:
+    handlers:
+        main:
+            type: stream
+            path: 'php://stderr'
+            level: '%env(LOG_LEVEL)%'

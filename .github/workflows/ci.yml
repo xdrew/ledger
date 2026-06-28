@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # Early, cheap gate (brief §7.1–§7.5). The full pipeline — mutation testing,
+  # container build, CD smoke — is added in `add-ci`.
+  quality:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: ledger
+          POSTGRES_PASSWORD: ledger
+          POSTGRES_DB: ledger_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ledger"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: "postgresql://ledger:ledger@127.0.0.1:5432/ledger_test?serverVersion=18&charset=utf8"
+      APP_SECRET: ci_not_a_secret
+      LOG_LEVEL: error
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Spec gate (OpenSpec strict)
+        run: |
+          npm install -g @fission-ai/openspec
+          openspec validate --all --strict
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_pgsql
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer manifest
+        run: composer validate --strict
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ hashFiles('composer.json') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Lint (php-cs-fixer)
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: Static analysis (PHPStan max)
+        run: vendor/bin/phpstan analyse --memory-limit=512M
+
+      - name: Unit tests
+        run: vendor/bin/phpunit --testsuite unit
+
+      - name: Integration tests
+        run: vendor/bin/phpunit --testsuite integration

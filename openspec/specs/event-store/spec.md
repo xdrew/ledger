@@ -1,0 +1,161 @@
+# event-store Specification
+
+## Purpose
+TBD - created by archiving change add-event-store-foundation. Update Purpose after archive.
+## Requirements
+### Requirement: Append-only event persistence
+
+The event store SHALL persist domain events into a named stream and SHALL expose no
+operation that updates or deletes an already-persisted event. Once appended, an event is
+immutable.
+
+#### Scenario: Events appended to a new stream are retrievable
+
+- **WHEN** two events are appended to a previously empty stream
+- **THEN** loading that stream returns exactly those two events, in the order appended
+
+#### Scenario: No mutation surface exists
+
+- **WHEN** the event store contract is inspected
+- **THEN** it provides only append and read operations and exposes no update or delete
+  operation for persisted events
+
+### Requirement: Per-stream sequential versioning
+
+Each event in a stream SHALL be assigned a contiguous, monotonically increasing version.
+A new stream starts at version 0; the first appended event is version 1, and each
+subsequent event increments the version by exactly one.
+
+#### Scenario: Versions are assigned contiguously
+
+- **WHEN** three events are appended to a new stream
+- **THEN** the persisted events carry versions 1, 2, and 3 respectively
+
+### Requirement: Optimistic concurrency control
+
+An append SHALL declare the expected current version of the stream. If the expected
+version does not equal the stream's actual current version, the store SHALL reject the
+append with a concurrency conflict and SHALL persist none of the events in that append
+(the append is atomic).
+
+#### Scenario: Append with the matching expected version succeeds
+
+- **WHEN** a stream is at version 2 and an append declares expected version 2
+- **THEN** the events are persisted and the stream advances to the new version
+
+#### Scenario: Append with a stale expected version is rejected atomically
+
+- **WHEN** a stream is at version 2 and an append declares expected version 1
+- **THEN** the append fails with a concurrency conflict
+- **AND** no events from that append are persisted and the stream remains at version 2
+
+#### Scenario: Two concurrent appends from the same expected version — exactly one wins
+
+- **WHEN** two appends to the same stream both declare the same expected version
+- **THEN** exactly one append is persisted and the other is rejected with a concurrency
+  conflict
+
+#### Scenario: Appending to a new stream expects version 0
+
+- **WHEN** an append to a non-existent stream declares expected version 0
+- **THEN** the append succeeds and the stream is created
+
+### Requirement: Stream loading and rehydration
+
+The store SHALL load all events for a given stream in ascending version order, so an
+aggregate can be reconstituted from its history.
+
+#### Scenario: Loading an existing stream returns events in version order
+
+- **WHEN** a stream with three events is loaded
+- **THEN** the three events are returned ordered by ascending version
+
+#### Scenario: Loading a non-existent stream yields no events
+
+- **WHEN** a stream that was never written is loaded
+- **THEN** an empty result is returned and no error is raised
+
+### Requirement: Global ordering across streams
+
+The store SHALL assign every persisted event a store-wide monotonically increasing global
+position, and SHALL support reading events in global position order starting after a given
+position cursor.
+
+#### Scenario: Events across different streams receive increasing global positions
+
+- **WHEN** events are appended to two different streams
+- **THEN** each persisted event has a global position greater than every event appended
+  before it
+
+#### Scenario: Reading from a cursor returns only later events in order
+
+- **WHEN** the global stream is read starting after a given position
+- **THEN** only events with a greater global position are returned, in ascending global
+  position order
+
+### Requirement: Event serialization and metadata
+
+The store SHALL serialize each event to a persistable form recording a stable event type
+identifier, an integer schema version, the event payload, a unique event id, an
+occurred-at timestamp obtained from an injected clock, and correlation and causation
+identifiers; and SHALL deserialize persisted events back into typed domain events.
+
+#### Scenario: Serialize/deserialize round-trip preserves the event
+
+- **WHEN** an event is appended and then loaded back
+- **THEN** the deserialized event equals the original in type and payload
+
+#### Scenario: Event metadata is captured on append
+
+- **WHEN** an event is appended with a correlation id and a causation id
+- **THEN** the persisted event records its event id, schema version, occurred-at
+  timestamp from the injected clock, and the correlation and causation ids
+
+#### Scenario: Unknown event type cannot be deserialized silently
+
+- **WHEN** a persisted event references a type not present in the type registry
+- **THEN** deserialization fails with an explicit error rather than returning a partial or
+  untyped event
+
+### Requirement: In-memory event store double
+
+An in-memory implementation of the event store SHALL satisfy the same contract as the
+production store — append, load, optimistic concurrency rejection, and global ordering —
+so write-side unit tests can run without a database.
+
+#### Scenario: In-memory store enforces optimistic concurrency identically
+
+- **WHEN** an append with a stale expected version is made against the in-memory store
+- **THEN** it is rejected with a concurrency conflict and no events are persisted, matching
+  the production store's behavior
+
+#### Scenario: In-memory store preserves global ordering
+
+- **WHEN** events are appended across multiple streams to the in-memory store
+- **THEN** reading in global order returns them with monotonically increasing positions
+
+### Requirement: Base aggregate root
+
+A base aggregate root SHALL let an aggregate record new events, apply events to mutate its
+in-memory state, track its current version, expose and clear its uncommitted events for
+persistence, and reconstitute its state by replaying a historical event stream without
+re-recording those events.
+
+#### Scenario: Recording an event stages it and mutates state
+
+- **WHEN** an aggregate records a new event
+- **THEN** the event appears in its uncommitted events and the aggregate's state reflects
+  that event
+
+#### Scenario: Pulling uncommitted events returns and clears them
+
+- **WHEN** uncommitted events are pulled from an aggregate
+- **THEN** the staged events are returned and the aggregate's uncommitted list becomes
+  empty
+
+#### Scenario: Reconstituting from history rebuilds state without re-recording
+
+- **WHEN** an aggregate is reconstituted from a historical event stream
+- **THEN** its state reflects all replayed events, its version equals the last event's
+  version, and its uncommitted events list is empty
+
