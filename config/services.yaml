@@ -3,6 +3,10 @@ services:
         autowire: true
         autoconfigure: true
 
+    _instanceof:
+        App\EventStore\Serialization\EventTypeProvider:
+            tags: ['app.event_type_provider']
+
     App\:
         resource: '../src/'
         exclude:
@@ -20,14 +24,24 @@ services:
             - '../src/EventStore/Serialization/UnknownEventType.php'
             - '../src/EventStore/Aggregate/'
             - '../src/Accounts/Domain/'
+            - '../src/Ledger/Domain/'
 
     # Ports -> default adapters.
     App\SharedKernel\Clock\Clock: '@App\SharedKernel\Clock\SystemClock'
     App\EventStore\EventStore: '@App\EventStore\Dbal\DbalEventStore'
     App\Accounts\Domain\AccountRepository: '@App\Accounts\Infrastructure\EventSourcedAccountRepository'
+    App\Ledger\Domain\LedgerRepository: '@App\Ledger\Infrastructure\EventSourcedLedgerRepository'
+    App\Ledger\Domain\AccountStatusReader: '@App\Ledger\Infrastructure\AccountRepositoryStatusReader'
 
-    # Register account event types on the shared serializer registry.
-    # (Single-context configurator for now; switches to a composable mechanism
-    # when a second bounded context registers its events.)
+    # Ledger posting service lives in the domain but is a wired service.
+    App\Ledger\Domain\JournalPostingService:
+        autowire: true
+
+    # Each bounded context contributes its event types via a tagged provider;
+    # the configurator applies them all to the shared registry.
+    App\EventStore\Serialization\EventTypeRegistryConfigurator:
+        arguments:
+            $providers: !tagged_iterator app.event_type_provider
+
     App\EventStore\Serialization\EventTypeRegistry:
-        configurator: ['App\Accounts\Infrastructure\AccountEventTypes', 'registerInto']
+        configurator: ['@App\EventStore\Serialization\EventTypeRegistryConfigurator', 'configure']

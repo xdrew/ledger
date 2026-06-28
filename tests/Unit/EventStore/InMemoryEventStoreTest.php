@@ -11,6 +11,7 @@ use App\EventStore\Serialization\UnknownEventType;
 use App\EventStore\StreamId;
 use App\Tests\Support\FixedClock;
 use App\Tests\Support\SomethingHappened;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class InMemoryEventStoreTest extends TestCase
@@ -23,7 +24,8 @@ final class InMemoryEventStoreTest extends TestCase
         return new InMemoryEventStore(new FixedClock(new \DateTimeImmutable('2026-01-01T00:00:00+00:00')), $registry);
     }
 
-    public function testAppendsAndLoadsEventsInOrder(): void
+    #[Test]
+    public function appendsAndLoadsEventsInOrder(): void
     {
         $store = $this->store();
         $stream = StreamId::of('counter', 'c-1');
@@ -36,7 +38,8 @@ final class InMemoryEventStoreTest extends TestCase
         self::assertSame('b', self::payloadWhat($loaded[1]->event));
     }
 
-    public function testAssignsContiguousVersions(): void
+    #[Test]
+    public function assignsContiguousVersions(): void
     {
         $store = $this->store();
         $stream = StreamId::of('counter', 'c-1');
@@ -46,7 +49,8 @@ final class InMemoryEventStoreTest extends TestCase
         self::assertSame([1, 2, 3], array_map(static fn($r) => $r->version, $store->load($stream)));
     }
 
-    public function testNewStreamExpectsVersionZero(): void
+    #[Test]
+    public function newStreamExpectsVersionZero(): void
     {
         $store = $this->store();
         $stream = StreamId::of('counter', 'fresh');
@@ -56,7 +60,8 @@ final class InMemoryEventStoreTest extends TestCase
         self::assertCount(1, $store->load($stream));
     }
 
-    public function testRejectsStaleExpectedVersionWithoutPersisting(): void
+    #[Test]
+    public function rejectsStaleExpectedVersionWithoutPersisting(): void
     {
         $store = $this->store();
         $stream = StreamId::of('counter', 'c-1');
@@ -73,7 +78,8 @@ final class InMemoryEventStoreTest extends TestCase
         self::assertCount(1, $store->load($stream), 'No events from the rejected append should be persisted.');
     }
 
-    public function testAssignsIncreasingGlobalPositionsAcrossStreams(): void
+    #[Test]
+    public function assignsIncreasingGlobalPositionsAcrossStreams(): void
     {
         $store = $this->store();
         $store->append(StreamId::of('counter', 'a'), 0, [new SomethingHappened('a', 1)]);
@@ -83,7 +89,8 @@ final class InMemoryEventStoreTest extends TestCase
         self::assertSame([1, 2], array_map(static fn($r) => $r->globalPosition, $all));
     }
 
-    public function testReadFromReturnsOnlyLaterEventsInOrder(): void
+    #[Test]
+    public function readFromReturnsOnlyLaterEventsInOrder(): void
     {
         $store = $this->store();
         $stream = StreamId::of('counter', 'c-1');
@@ -93,7 +100,8 @@ final class InMemoryEventStoreTest extends TestCase
         self::assertSame([2, 3], array_map(static fn($r) => $r->globalPosition, $after));
     }
 
-    public function testUnknownEventTypeIsRejected(): void
+    #[Test]
+    public function unknownEventTypeIsRejected(): void
     {
         // Registry without the event registered.
         $store = new InMemoryEventStore(new FixedClock(new \DateTimeImmutable('2026-01-01T00:00:00+00:00')), new EventTypeRegistry());

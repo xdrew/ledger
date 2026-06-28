@@ -12,15 +12,16 @@ use App\Accounts\Domain\Event\FundsDebited;
 use App\Accounts\Domain\Event\FundsDeposited;
 use App\Accounts\Domain\Event\FundsHeld;
 use App\Accounts\Domain\Event\HoldReleased;
+use App\EventStore\Serialization\EventTypeProvider;
 use App\EventStore\Serialization\EventTypeRegistry;
 use App\SharedKernel\Event\DomainEvent;
 
 /**
  * Single source of truth for the account event type names. Used both to
- * configure the shared registry in DI and to set up registries in tests, so the
- * two never drift.
+ * configure the shared registry in DI (as a tagged {@see EventTypeProvider}) and
+ * to set up registries in tests, so the two never drift.
  */
-final class AccountEventTypes
+final class AccountEventTypes implements EventTypeProvider
 {
     /**
      * @var array<string, class-string<DomainEvent>>
@@ -36,7 +37,7 @@ final class AccountEventTypes
         'accounts.account_closed' => AccountClosed::class,
     ];
 
-    public static function registerInto(EventTypeRegistry $registry): void
+    public function registerInto(EventTypeRegistry $registry): void
     {
         foreach (self::TYPES as $type => $class) {
             $registry->register($type, $class);

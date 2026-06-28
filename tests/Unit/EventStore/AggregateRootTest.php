@@ -6,11 +6,13 @@ namespace App\Tests\Unit\EventStore;
 
 use App\Tests\Support\Counter;
 use App\Tests\Support\SomethingHappened;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class AggregateRootTest extends TestCase
 {
-    public function testRecordingStagesEventsAndMutatesState(): void
+    #[Test]
+    public function recordingStagesEventsAndMutatesState(): void
     {
         $counter = Counter::start();
         $counter->bump(5);
@@ -20,7 +22,8 @@ final class AggregateRootTest extends TestCase
         self::assertCount(2, $counter->pullUncommittedEvents());
     }
 
-    public function testPullingUncommittedEventsClearsThem(): void
+    #[Test]
+    public function pullingUncommittedEventsClearsThem(): void
     {
         $counter = Counter::start();
         $counter->bump(5);
@@ -33,7 +36,8 @@ final class AggregateRootTest extends TestCase
         self::assertSame(2, $counter->aggregateVersion(), 'Pulling does not change the version.');
     }
 
-    public function testReconstituteFromHistoryRebuildsStateWithoutRecording(): void
+    #[Test]
+    public function reconstituteFromHistoryRebuildsStateWithoutRecording(): void
     {
         $counter = Counter::reconstituteFromHistory(
             new SomethingHappened('start', 0),

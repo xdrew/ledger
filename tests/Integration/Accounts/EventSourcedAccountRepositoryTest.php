@@ -17,6 +17,7 @@ use App\SharedKernel\Clock\SystemClock;
 use App\SharedKernel\Money\Currency;
 use App\SharedKernel\Money\Money;
 use Doctrine\DBAL\Connection;
+use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -50,12 +51,13 @@ final class EventSourcedAccountRepositoryTest extends KernelTestCase
         // Build the repository over a registry configured by the same registrar
         // used in DI, so the test exercises the real serialization wiring.
         $registry = new EventTypeRegistry();
-        AccountEventTypes::registerInto($registry);
+        (new AccountEventTypes())->registerInto($registry);
         $store = new DbalEventStore($this->connection, new EventSerializer($registry), new SystemClock());
         $this->repository = new EventSourcedAccountRepository($store);
     }
 
-    public function testOpenDepositHoldRoundTrip(): void
+    #[Test]
+    public function openDepositHoldRoundTrip(): void
     {
         $id = AccountId::generate();
         $account = Account::open($id, Currency::of('USD'));
@@ -72,7 +74,8 @@ final class EventSourcedAccountRepositoryTest extends KernelTestCase
         self::assertTrue($reloaded->totalBalance()->equals(Money::of(10_000, Currency::of('USD'))));
     }
 
-    public function testSubsequentOperationsAppendToTheStream(): void
+    #[Test]
+    public function subsequentOperationsAppendToTheStream(): void
     {
         $id = AccountId::generate();
         $account = Account::open($id, Currency::of('USD'));

@@ -14,6 +14,7 @@ use App\Tests\Support\FixedClock;
 use App\Tests\Support\SomethingHappened;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -52,7 +53,8 @@ final class DbalEventStoreTest extends KernelTestCase
         $this->store = new DbalEventStore($this->connection, new EventSerializer($registry), $this->clock);
     }
 
-    public function testAppendAndLoadRoundTrip(): void
+    #[Test]
+    public function appendAndLoadRoundTrip(): void
     {
         $stream = StreamId::of('counter', 'c-1');
         $this->store->append($stream, 0, [new SomethingHappened('paid', 500)], new EventMetadata('corr-1', 'cause-1'));
@@ -76,7 +78,8 @@ final class DbalEventStoreTest extends KernelTestCase
         );
     }
 
-    public function testAssignsContiguousVersions(): void
+    #[Test]
+    public function assignsContiguousVersions(): void
     {
         $stream = StreamId::of('counter', 'c-1');
         $this->store->append($stream, 0, [
@@ -88,7 +91,8 @@ final class DbalEventStoreTest extends KernelTestCase
         self::assertSame([1, 2, 3], array_map(static fn($r) => $r->version, $this->store->load($stream)));
     }
 
-    public function testStaleExpectedVersionIsRejectedAtomically(): void
+    #[Test]
+    public function staleExpectedVersionIsRejectedAtomically(): void
     {
         $stream = StreamId::of('counter', 'c-1');
         $this->store->append($stream, 0, [new SomethingHappened('a', 1)]);
@@ -103,7 +107,8 @@ final class DbalEventStoreTest extends KernelTestCase
         self::assertCount(1, $this->store->load($stream), 'Nothing from the rejected append should persist.');
     }
 
-    public function testGlobalOrderingAcrossStreams(): void
+    #[Test]
+    public function globalOrderingAcrossStreams(): void
     {
         $this->store->append(StreamId::of('counter', 'a'), 0, [new SomethingHappened('a', 1)]);
         $this->store->append(StreamId::of('counter', 'b'), 0, [new SomethingHappened('b', 2)]);
@@ -112,7 +117,8 @@ final class DbalEventStoreTest extends KernelTestCase
         self::assertSame([1, 2], $positions);
     }
 
-    public function testReadFromReturnsOnlyLaterEvents(): void
+    #[Test]
+    public function readFromReturnsOnlyLaterEvents(): void
     {
         $stream = StreamId::of('counter', 'c-1');
         $this->store->append($stream, 0, [new SomethingHappened('a', 1), new SomethingHappened('b', 2)]);
@@ -121,7 +127,8 @@ final class DbalEventStoreTest extends KernelTestCase
         self::assertSame([2], array_map(static fn($r) => $r->globalPosition, $after));
     }
 
-    public function testUniqueConstraintGuardsStreamVersion(): void
+    #[Test]
+    public function uniqueConstraintGuardsStreamVersion(): void
     {
         // The DB-level guard behind the optimistic-concurrency check: a duplicate
         // (stream_type, stream_id, version) is rejected by the unique index.

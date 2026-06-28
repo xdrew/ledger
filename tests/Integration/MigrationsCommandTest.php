@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -16,7 +17,8 @@ use Symfony\Component\Console\Tester\CommandTester;
  */
 final class MigrationsCommandTest extends KernelTestCase
 {
-    public function testMigrationsApplyAndSchemaReportsUpToDate(): void
+    #[Test]
+    public function migrationsApplyAndSchemaReportsUpToDate(): void
     {
         $kernel = self::bootKernel();
         $application = new Application($kernel);

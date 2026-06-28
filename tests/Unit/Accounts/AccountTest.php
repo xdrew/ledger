@@ -13,6 +13,7 @@ use App\Accounts\Domain\Exception\InvalidAmount;
 use App\SharedKernel\Money\Currency;
 use App\SharedKernel\Money\CurrencyMismatch;
 use App\SharedKernel\Money\Money;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class AccountTest extends TestCase
@@ -35,7 +36,8 @@ final class AccountTest extends TestCase
         return $account;
     }
 
-    public function testOpenStartsActiveWithZeroBalances(): void
+    #[Test]
+    public function openStartsActiveWithZeroBalances(): void
     {
         $account = $this->account();
 
@@ -47,7 +49,8 @@ final class AccountTest extends TestCase
         self::assertTrue($account->totalBalance()->isZero());
     }
 
-    public function testDepositIncreasesAvailable(): void
+    #[Test]
+    public function depositIncreasesAvailable(): void
     {
         $account = $this->funded(10_000);
 
@@ -55,7 +58,8 @@ final class AccountTest extends TestCase
         self::assertTrue($account->totalBalance()->equals($this->usd(10_000)));
     }
 
-    public function testHoldMovesAvailableToReserved(): void
+    #[Test]
+    public function holdMovesAvailableToReserved(): void
     {
         $account = $this->funded(10_000);
         $account->hold($this->usd(4_000));
@@ -65,7 +69,8 @@ final class AccountTest extends TestCase
         self::assertTrue($account->totalBalance()->equals($this->usd(10_000)));
     }
 
-    public function testHoldBeyondAvailableIsRejectedAndLeavesBalancesUntouched(): void
+    #[Test]
+    public function holdBeyondAvailableIsRejectedAndLeavesBalancesUntouched(): void
     {
         $account = $this->funded(10_000);
         $account->pullUncommittedEvents();
@@ -82,7 +87,8 @@ final class AccountTest extends TestCase
         self::assertSame([], $account->pullUncommittedEvents());
     }
 
-    public function testReleaseHoldMovesReservedBackToAvailable(): void
+    #[Test]
+    public function releaseHoldMovesReservedBackToAvailable(): void
     {
         $account = $this->funded(10_000);
         $account->hold($this->usd(4_000));
@@ -92,7 +98,8 @@ final class AccountTest extends TestCase
         self::assertTrue($account->reservedBalance()->isZero());
     }
 
-    public function testReleaseBeyondReservedIsRejected(): void
+    #[Test]
+    public function releaseBeyondReservedIsRejected(): void
     {
         $account = $this->funded(10_000);
         $account->hold($this->usd(4_000));
@@ -101,7 +108,8 @@ final class AccountTest extends TestCase
         $account->releaseHold($this->usd(5_000));
     }
 
-    public function testDebitReducesReservedAndTotal(): void
+    #[Test]
+    public function debitReducesReservedAndTotal(): void
     {
         $account = $this->funded(10_000);
         $account->hold($this->usd(4_000));
@@ -111,7 +119,8 @@ final class AccountTest extends TestCase
         self::assertTrue($account->totalBalance()->equals($this->usd(6_000)));
     }
 
-    public function testDebitBeyondReservedIsRejected(): void
+    #[Test]
+    public function debitBeyondReservedIsRejected(): void
     {
         $account = $this->funded(10_000);
         $account->hold($this->usd(4_000));
@@ -120,7 +129,8 @@ final class AccountTest extends TestCase
         $account->debit($this->usd(5_000));
     }
 
-    public function testCreditIncreasesAvailable(): void
+    #[Test]
+    public function creditIncreasesAvailable(): void
     {
         $account = $this->account();
         $account->credit($this->usd(4_000));
@@ -128,7 +138,8 @@ final class AccountTest extends TestCase
         self::assertTrue($account->availableBalance()->equals($this->usd(4_000)));
     }
 
-    public function testFreezeMakesAccountInactive(): void
+    #[Test]
+    public function freezeMakesAccountInactive(): void
     {
         $account = $this->account();
         $account->freeze();
@@ -137,7 +148,8 @@ final class AccountTest extends TestCase
         self::assertFalse($account->isActive());
     }
 
-    public function testCloseMakesAccountInactive(): void
+    #[Test]
+    public function closeMakesAccountInactive(): void
     {
         $account = $this->account();
         $account->close();
@@ -146,7 +158,8 @@ final class AccountTest extends TestCase
         self::assertFalse($account->isActive());
     }
 
-    public function testOperationsOnFrozenAccountAreRejected(): void
+    #[Test]
+    public function operationsOnFrozenAccountAreRejected(): void
     {
         $account = $this->funded(10_000);
         $account->freeze();
@@ -155,7 +168,8 @@ final class AccountTest extends TestCase
         $account->deposit($this->usd(100));
     }
 
-    public function testOperationsOnClosedAccountAreRejected(): void
+    #[Test]
+    public function operationsOnClosedAccountAreRejected(): void
     {
         $account = $this->funded(10_000);
         $account->close();
@@ -164,25 +178,29 @@ final class AccountTest extends TestCase
         $account->hold($this->usd(100));
     }
 
-    public function testZeroAmountIsRejected(): void
+    #[Test]
+    public function zeroAmountIsRejected(): void
     {
         $this->expectException(InvalidAmount::class);
         $this->account()->deposit($this->usd(0));
     }
 
-    public function testNegativeAmountIsRejected(): void
+    #[Test]
+    public function negativeAmountIsRejected(): void
     {
         $this->expectException(InvalidAmount::class);
         $this->account()->deposit($this->usd(-100));
     }
 
-    public function testDifferentCurrencyIsRejected(): void
+    #[Test]
+    public function differentCurrencyIsRejected(): void
     {
         $this->expectException(CurrencyMismatch::class);
         $this->account()->deposit(Money::of(100, Currency::of('EUR')));
     }
 
-    public function testReservedStaysWithinBoundsThroughASequence(): void
+    #[Test]
+    public function reservedStaysWithinBoundsThroughASequence(): void
     {
         $account = $this->funded(10_000);
         $account->hold($this->usd(3_000));
@@ -198,7 +216,8 @@ final class AccountTest extends TestCase
         self::assertFalse($account->availableBalance()->isNegative());
     }
 
-    public function testRecordsExpectedEventsAndAdvancesVersion(): void
+    #[Test]
+    public function recordsExpectedEventsAndAdvancesVersion(): void
     {
         $account = $this->funded(10_000);
         $account->hold($this->usd(4_000));

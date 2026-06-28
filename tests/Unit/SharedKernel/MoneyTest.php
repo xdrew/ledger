@@ -7,6 +7,7 @@ namespace App\Tests\Unit\SharedKernel;
 use App\SharedKernel\Money\Currency;
 use App\SharedKernel\Money\CurrencyMismatch;
 use App\SharedKernel\Money\Money;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class MoneyTest extends TestCase
@@ -16,17 +17,20 @@ final class MoneyTest extends TestCase
         return Money::of($minorUnits, Currency::of('USD'));
     }
 
-    public function testAddingSameCurrency(): void
+    #[Test]
+    public function addingSameCurrency(): void
     {
         self::assertTrue($this->usd(150)->equals($this->usd(100)->add($this->usd(50))));
     }
 
-    public function testSubtractingSameCurrency(): void
+    #[Test]
+    public function subtractingSameCurrency(): void
     {
         self::assertTrue($this->usd(40)->equals($this->usd(100)->subtract($this->usd(60))));
     }
 
-    public function testZeroAndPredicates(): void
+    #[Test]
+    public function zeroAndPredicates(): void
     {
         self::assertTrue(Money::zero(Currency::of('USD'))->isZero());
         self::assertTrue($this->usd(1)->isPositive());
@@ -34,25 +38,29 @@ final class MoneyTest extends TestCase
         self::assertFalse($this->usd(0)->isPositive());
     }
 
-    public function testComparisons(): void
+    #[Test]
+    public function comparisons(): void
     {
         self::assertTrue($this->usd(100)->isGreaterThan($this->usd(50)));
         self::assertTrue($this->usd(50)->isLessThan($this->usd(100)));
         self::assertTrue($this->usd(50)->isGreaterThanOrEqual($this->usd(50)));
     }
 
-    public function testEqualityConsidersCurrency(): void
+    #[Test]
+    public function equalityConsidersCurrency(): void
     {
         self::assertFalse($this->usd(100)->equals(Money::of(100, Currency::of('EUR'))));
     }
 
-    public function testAddingDifferentCurrenciesIsRejected(): void
+    #[Test]
+    public function addingDifferentCurrenciesIsRejected(): void
     {
         $this->expectException(CurrencyMismatch::class);
         $this->usd(100)->add(Money::of(50, Currency::of('EUR')));
     }
 
-    public function testComparingDifferentCurrenciesIsRejected(): void
+    #[Test]
+    public function comparingDifferentCurrenciesIsRejected(): void
     {
         $this->expectException(CurrencyMismatch::class);
         $this->usd(100)->isGreaterThan(Money::of(50, Currency::of('EUR')));

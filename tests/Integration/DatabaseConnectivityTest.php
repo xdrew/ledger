@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration;
 
 use Doctrine\DBAL\Connection;
+use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -13,7 +14,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  */
 final class DatabaseConnectivityTest extends KernelTestCase
 {
-    public function testConnectionExecutesQuery(): void
+    #[Test]
+    public function connectionExecutesQuery(): void
     {
         self::bootKernel();
 

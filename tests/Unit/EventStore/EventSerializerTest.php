@@ -8,6 +8,7 @@ use App\EventStore\Serialization\EventSerializer;
 use App\EventStore\Serialization\EventTypeRegistry;
 use App\EventStore\Serialization\UnknownEventType;
 use App\Tests\Support\SomethingHappened;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class EventSerializerTest extends TestCase
@@ -20,7 +21,8 @@ final class EventSerializerTest extends TestCase
         return new EventSerializer($registry);
     }
 
-    public function testSerializeCapturesTypeSchemaAndPayload(): void
+    #[Test]
+    public function serializeCapturesTypeSchemaAndPayload(): void
     {
         $serialized = $this->serializer()->serialize(new SomethingHappened('paid', 500));
 
@@ -29,7 +31,8 @@ final class EventSerializerTest extends TestCase
         self::assertSame(['what' => 'paid', 'amount' => 500], $serialized->payload);
     }
 
-    public function testRoundTripPreservesTheEvent(): void
+    #[Test]
+    public function roundTripPreservesTheEvent(): void
     {
         $serializer = $this->serializer();
         $original = new SomethingHappened('paid', 500);
@@ -42,7 +45,8 @@ final class EventSerializerTest extends TestCase
         self::assertSame(500, $restored->amount);
     }
 
-    public function testDeserializeUnknownTypeFailsLoudly(): void
+    #[Test]
+    public function deserializeUnknownTypeFailsLoudly(): void
     {
         $this->expectException(UnknownEventType::class);
         $this->serializer()->deserialize('test.never_registered', 1, []);
