@@ -2,6 +2,9 @@ services:
     _defaults:
         autowire: true
         autoconfigure: true
+        bind:
+            string $projectDir: '%kernel.project_dir%'
+            string $apiKey: '%env(API_KEY)%'
 
     _instanceof:
         App\EventStore\Serialization\EventTypeProvider:
@@ -41,6 +44,17 @@ services:
             - '../src/Projections/Query/AccountBalance.php'
             - '../src/Projections/Query/StatementEntry.php'
             - '../src/Outbox/EventPublisher.php'
+            # HTTP controllers are registered (and tagged) by the App\Api\ block below.
+            - '../src/Api/'
+
+    # Invokable Action controllers. Request/Response DTOs are data (created by the
+    # serializer / returned by actions), not services, so they are excluded.
+    App\Api\:
+        resource: '../src/Api/'
+        exclude:
+            - '../src/Api/*/*/Request.php'
+            - '../src/Api/*/*/Response.php'
+        tags: ['controller.service_arguments']
 
     # Ports -> default adapters.
     App\SharedKernel\Clock\Clock: '@App\SharedKernel\Clock\SystemClock'

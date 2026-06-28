@@ -40,5 +40,23 @@ services:
     # can run composer, the console, and the test suites.
     command: ["tail", "-f", "/dev/null"]
 
+  # HTTP API served by RoadRunner (dev config). The production multi-stage image
+  # and tuning come in add-deployment.
+  http:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: ["rr", "serve", "-c", ".rr.dev.yaml"]
+    ports:
+      - "${HTTP_HOST_PORT:-8080}:8080"
+
 volumes:
   pgdata:

@@ -22,6 +22,10 @@
         <testsuite name="integration">
             <directory>tests/Integration</directory>
         </testsuite>
+        <!-- HTTP API tests on the Symfony kernel (WebTestCase); needs PostgreSQL. -->
+        <testsuite name="functional">
+            <directory>tests/Functional</directory>
+        </testsuite>
     </testsuites>
 
     <source>

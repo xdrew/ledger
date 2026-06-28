@@ -81,11 +81,29 @@ tasks:
     cmds:
       - "{{.APP}} vendor/bin/phpunit --testsuite integration"
 
+  test:functional:
+    desc: Run the HTTP API (functional) suite
+    cmds:
+      - "{{.APP}} vendor/bin/phpunit --testsuite functional"
+
   test:
-    desc: Run all tests (unit + integration)
+    desc: Run all tests (unit + integration + functional)
     cmds:
       - task: test:unit
       - task: test:integration
+      - task: test:functional
+
+  serve:
+    desc: Serve the HTTP API via RoadRunner (http://localhost:8080)
+    cmds:
+      - "{{.COMPOSE}} up -d http"
+
+  smoke:
+    desc: Smoke-test the running RoadRunner server (GET /api/health)
+    cmds:
+      - "{{.COMPOSE}} up -d http"
+      - 'until curl -fsS http://localhost:${HTTP_HOST_PORT:-8080}/api/health >/dev/null 2>&1; do sleep 1; done'
+      - 'curl -fsS http://localhost:${HTTP_HOST_PORT:-8080}/api/health && echo'
 
   spec:
     desc: Validate all OpenSpec changes strictly

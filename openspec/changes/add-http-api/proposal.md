@@ -11,9 +11,11 @@ through the message bus (`add-message-bus`) and are made idempotent with the exi
 
 ## What Changes
 
-- Enable the **Symfony HTTP stack** and serve it under **RoadRunner** the travel way:
-  `public/index.php` returning the Kernel, `baldinof/roadrunner-bundle` + `symfony/runtime`,
-  `.rr.yaml` / `.rr.dev.yaml`, and a compose `http` service running `rr serve -c .rr.dev.yaml`.
+- Enable the **Symfony HTTP stack** and serve it under **RoadRunner**: `public/index.php` (standard
+  runtime front controller) plus a `public/worker.php` RoadRunner worker, `.rr.yaml` / `.rr.dev.yaml`,
+  the `rr` binary in the dev image, and a compose `http` service running `rr serve -c .rr.dev.yaml`.
+  (Travel uses `baldinof/roadrunner-bundle`, which is not yet Symfony 8-compatible, so the worker is
+  a thin hand-rolled loop over `spiral/roadrunner-http` — the same runtime the bundle wraps.)
 - **Endpoints** as invokable `Action` classes (one directory per endpoint, mirroring
   `App\Api\{Module}\{Operation}\{Action,Request,Response}`):
   - `POST /api/accounts`, `GET /api/accounts/{id}`, `POST /api/accounts/{id}/deposits`
@@ -67,11 +69,12 @@ through the message bus (`add-message-bus`) and are made idempotent with the exi
   endpoint; the `ApiExceptionListener`; an idempotency listener; the `ApiKeyAuthenticator`); a
   custom `App\Infrastructure\OpenApi` generator + attributes + `OpenApiAction` + console command;
   `public/index.php`; routing/framework/security HTTP config; `.rr.yaml` / `.rr.dev.yaml`.
-- **Dependencies (new):** `baldinof/roadrunner-bundle` (+ `spiral/roadrunner-*` it pulls in) and
-  `symfony/runtime` for the app server; `symfony/security-bundle` for the firewall;
-  `symfony/validator` for request validation. No OpenAPI library and no OpenAPI-validator — the
-  generator and its tests are hand-rolled, as in travel. The `rr` binary is added to the dev image.
-  (baldinof's Symfony 8-compatible release is used; verified at implementation.)
+- **Dependencies (new):** `spiral/roadrunner-http` + `spiral/roadrunner-worker` (the hand-rolled
+  worker; `baldinof/roadrunner-bundle` is not yet Symfony 8-compatible), `nyholm/psr7` +
+  `symfony/psr-http-message-bridge` for PSR-7 bridging, `symfony/security-bundle` for the firewall,
+  `symfony/validator` + `symfony/serializer` for request mapping/validation. No OpenAPI library and
+  no OpenAPI-validator — the generator and its tests are hand-rolled, as in travel. The `rr` binary
+  is baked into the dev image; the dev image also enables `ext-sockets` (needed by the worker).
 - **Read-after-write:** queries read from projections (eventual consistency, ADR-003); the
   contract/e2e tests run the projector to catch up before asserting reads.
 - **Depends on** `add-message-bus` (command dispatch) and accounts, transfers, idempotency,

@@ -1,0 +1,25 @@
+security:
+    providers:
+        api_clients:
+            memory:
+                users:
+                    api-client: { roles: ['ROLE_API'] }
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+        api:
+            pattern: ^/api
+            stateless: true
+            provider: api_clients
+            custom_authenticators:
+                - App\Infrastructure\Http\ApiKeyAuthenticator
+            entry_point: App\Infrastructure\Http\ApiKeyAuthenticator
+
+    access_control:
+        # Public surface: liveness and the OpenAPI document need no key.
+        - { path: ^/api/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api/openapi, roles: PUBLIC_ACCESS }
+        # Everything else under /api requires a valid API key.
+        - { path: ^/api, roles: ROLE_API }
