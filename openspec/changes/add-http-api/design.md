@@ -65,13 +65,17 @@ controllers in `App\Api` and builds the 3.1 document: it reads each `__invoke`'s
 its constructor/properties), the `JsonSerializable` return type (→ response schema), and a few
 small attributes — `#[ResponseStatus]` (success code), `#[Tag]`, `#[OpenApiPublic]` (no auth). The
 security scheme is the API key (header). It is served by an `OpenApiAction` at
-`/openapi.{json,yaml}` and written to disk by a `openapi:generate` console command. A contract
-test exercises each endpoint via `WebTestCase` and validates responses against the generated
-document with `league/openapi-psr7-validator`.
+`/openapi.{json,yaml}` and written to disk by a `openapi:generate` console command. Verification
+needs no OpenAPI-validator dependency (the travel approach): a **generator test** asserts the
+document is well-formed 3.1 with the expected paths/operations/schemas, and the per-endpoint
+**functional tests** assert the actual response shapes (which is the meaningful "responses match
+schema" check — validating responses against a schema *derived from the same DTOs* would be
+largely circular).
 
 - *Alternatives rejected:* `nelmio/api-doc-bundle` / `swagger-php` (the reviewer chose the
-  travel-project's dependency-free reflection generator); a hand-maintained `openapi.yaml` (drifts
-  from the code).
+  travel-project's dependency-free reflection generator); `league/openapi-psr7-validator` (adds a
+  dependency to re-check code-generated inference; functional shape tests cover it); a
+  hand-maintained `openapi.yaml` (drifts from the code).
 
 ### D7: Transfer endpoint returns the resulting resource
 `POST /transfers` runs the saga synchronously and returns `201` with the transfer resource and its
@@ -82,8 +86,8 @@ request with `status: failed` (not an HTTP error); a retriable `ConcurrencyConfl
 
 - **RoadRunner adds runtime/build moving parts (binary, worker, .rr.yaml)** → Mitigation: tests run
   on the Symfony kernel (no RoadRunner needed); a single smoke run verifies the server boots.
-- **The reflection generator can under-describe responses** → Mitigation: the contract test fails
-  if a response doesn't validate, forcing the DTOs/attributes to stay complete.
+- **The reflection generator can under-describe responses** → Mitigation: functional tests assert
+  the real response shapes per endpoint; the generator test asserts the document's structure.
 - **Eventual consistency surprises clients** → Mitigation: documented (ADR-003); reads carry the
   projection `version`; tests catch up explicitly.
 - **Idempotency listener must capture the exact response to replay** → Mitigation: capture status,

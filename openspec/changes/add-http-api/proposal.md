@@ -22,8 +22,9 @@ tested against.
   travel project — no `nelmio`/`swagger-php`): it scans invokable `*Action` controllers, their
   `#[Route]`, `#[MapRequestPayload]` request DTOs, `JsonSerializable` response DTOs, and a few
   small attributes (`ResponseStatus`, `Tag`, `OpenApiPublic`). Served via an action
-  (`/openapi.{json,yaml}`) and dumpable via a console command; a **contract test** asserts
-  responses conform to the generated document.
+  (`/openapi.{json,yaml}`) and dumpable via a console command. A **generator test** asserts the
+  document is well-formed 3.1 with the expected paths/schemas; per-endpoint **functional tests**
+  assert the response shapes (no OpenAPI-validator dependency — the travel approach).
 
 ## Capabilities
 
@@ -42,9 +43,9 @@ tested against.
   `App\Infrastructure\OpenApi` generator + serving action + dump command; `public/index.php`;
   routing/framework HTTP config; `.rr.yaml`.
 - **Dependencies (new):** RoadRunner (`spiral/roadrunner-http` + a Symfony RoadRunner runtime,
-  `nyholm/psr7`, `symfony/psr-http-message-bridge`); `symfony/validator`; dev:
-  `league/openapi-psr7-validator` (contract test). No OpenAPI library — the generator is
-  hand-rolled (reflection), as in the travel project. The `rr` binary is added to the dev image.
+  `nyholm/psr7`, `symfony/psr-http-message-bridge`); `symfony/validator`. No OpenAPI library and
+  no OpenAPI-validator — the generator and its tests are hand-rolled, as in the travel project.
+  The `rr` binary is added to the dev image.
 - **Read-after-write:** queries read from projections (eventual consistency, ADR-003); the
   contract/e2e tests run the projector to catch up before asserting reads.
 - **Depends on** `add-message-bus` (command/query dispatch) and accounts, transfers, idempotency,
