@@ -25,6 +25,9 @@ services:
             - '../src/EventStore/Aggregate/'
             - '../src/Accounts/Domain/'
             - '../src/Ledger/Domain/'
+            - '../src/Transfers/Domain/'
+            - '../src/Transfers/Application/InitiateTransfer.php'
+            - '../src/Transfers/Application/ReverseTransfer.php'
             - '../src/Idempotency/IdempotencyKey.php'
             - '../src/Idempotency/StoredResponse.php'
             - '../src/Idempotency/Ttl.php'
@@ -37,6 +40,7 @@ services:
     App\Accounts\Domain\AccountRepository: '@App\Accounts\Infrastructure\EventSourcedAccountRepository'
     App\Ledger\Domain\LedgerRepository: '@App\Ledger\Infrastructure\EventSourcedLedgerRepository'
     App\Ledger\Domain\AccountStatusReader: '@App\Ledger\Infrastructure\AccountRepositoryStatusReader'
+    App\Transfers\Domain\TransferRepository: '@App\Transfers\Infrastructure\EventSourcedTransferRepository'
     App\Idempotency\IdempotencyStore: '@App\Idempotency\Dbal\DbalIdempotencyStore'
 
     # Idempotency TTL from the environment (seconds).
