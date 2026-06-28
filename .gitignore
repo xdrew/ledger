@@ -1,6 +1,7 @@
 /vendor/
 /vendor-bin/*/vendor/
 /var/
+/config/reference.php
 /.env.local
 /.env.*.local
 /composer.lock.bak
