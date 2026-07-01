@@ -1,8 +1,9 @@
-# Minimal logging: level from the environment, written to stderr (12-factor).
-# Structured JSON formatting + correlation ids arrive in `add-observability`.
+# Structured JSON logs to stderr (12-factor), level from the environment. The
+# CorrelationProcessor adds correlation/causation/trace ids to every record.
 monolog:
     handlers:
         main:
             type: stream
             path: 'php://stderr'
             level: '%env(LOG_LEVEL)%'
+            formatter: 'monolog.formatter.json'

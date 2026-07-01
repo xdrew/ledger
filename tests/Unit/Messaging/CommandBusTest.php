@@ -19,6 +19,7 @@ use App\Ledger\Infrastructure\AccountRepositoryStatusReader;
 use App\Ledger\Infrastructure\EventSourcedLedgerRepository;
 use App\Ledger\Infrastructure\LedgerEventTypes;
 use App\Messaging\CommandBus;
+use App\Observability\Metrics\NullMetrics;
 use App\SharedKernel\Money\Currency;
 use App\SharedKernel\Money\Money;
 use App\Tests\Support\FixedClock;
@@ -59,6 +60,7 @@ final class CommandBusTest extends TestCase
             $this->accounts,
             $ledger,
             new JournalPostingService(new AccountRepositoryStatusReader($this->accounts)),
+            new NullMetrics(),
         );
 
         $this->bus = new CommandBus(

@@ -16,6 +16,7 @@ use App\Ledger\Domain\JournalEntryId;
 use App\Ledger\Domain\JournalPostingService;
 use App\Ledger\Infrastructure\AccountRepositoryStatusReader;
 use App\Ledger\Infrastructure\EventSourcedLedgerRepository;
+use App\Observability\Metrics\NullMetrics;
 use App\SharedKernel\Money\Currency;
 use App\SharedKernel\Money\Money;
 use App\Tests\Support\FixedClock;
@@ -54,6 +55,21 @@ final class TransferOrchestratorTest extends TestCase
         self::assertNotNull($transfer->journalEntryId());
         $entry = $env->ledger->load(JournalEntryId::fromString($transfer->journalEntryId()));
         self::assertCount(2, $entry->legs());
+    }
+
+    #[Test]
+    public function metricsCountCompletionsFailuresAndJournalEntries(): void
+    {
+        $env = TransferTestEnvironment::inMemory();
+        $source = $env->openAccount(10_000);
+        $destination = $env->openAccount(0);
+
+        $env->orchestrator->initiate(new InitiateTransfer(TransferId::generate(), $source, $destination, $this->usd(10_000)));
+        $env->orchestrator->initiate(new InitiateTransfer(TransferId::generate(), $source, $destination, $this->usd(10_000)));
+
+        self::assertSame(1.0, $env->metrics->counter('transfers_total', ['status' => 'completed']));
+        self::assertSame(1.0, $env->metrics->counter('transfers_total', ['status' => 'failed']));
+        self::assertSame(1.0, $env->metrics->counter('journal_entries_total'));
     }
 
     #[Test]
@@ -131,6 +147,7 @@ final class TransferOrchestratorTest extends TestCase
             $conflicting,
             new EventSourcedLedgerRepository($store),
             $posting,
+            new NullMetrics(),
         );
 
         $transfer = $orchestrator->initiate(new InitiateTransfer(TransferId::generate(), $sourceId, $destinationId, $this->usd(10_000)));

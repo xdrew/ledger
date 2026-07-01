@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Projections;
 
 use App\EventStore\EventStore;
+use App\Observability\Tracing\NoopTracer;
+use App\Observability\Tracing\Tracer;
 use App\Projections\Dbal\CheckpointStore;
 use Doctrine\DBAL\Connection;
 
@@ -18,6 +20,8 @@ final class ProjectionRunner
 {
     private const BATCH_SIZE = 500;
 
+    private readonly Tracer $tracer;
+
     /**
      * @param iterable<Projector> $projectors
      */
@@ -26,7 +30,10 @@ final class ProjectionRunner
         private readonly Connection $connection,
         private readonly CheckpointStore $checkpoints,
         private readonly iterable $projectors,
-    ) {}
+        ?Tracer $tracer = null,
+    ) {
+        $this->tracer = $tracer ?? new NoopTracer();
+    }
 
     /**
      * Process all events from the checkpoint to the head. Returns the number of
@@ -45,11 +52,18 @@ final class ProjectionRunner
             $this->connection->transactional(function () use ($events): void {
                 $lastPosition = 0;
                 foreach ($events as $event) {
-                    foreach ($this->projectors as $projector) {
-                        if ($projector->handles($event)) {
-                            $projector->project($event);
-                        }
-                    }
+                    $this->tracer->continueTrace(
+                        $event->metadata->traceparent,
+                        'projection.project',
+                        function () use ($event): void {
+                            foreach ($this->projectors as $projector) {
+                                if ($projector->handles($event)) {
+                                    $projector->project($event);
+                                }
+                            }
+                        },
+                        ['event_type' => $event->eventType],
+                    );
                     $lastPosition = $event->globalPosition ?? $lastPosition;
                 }
                 if ($lastPosition > 0) {

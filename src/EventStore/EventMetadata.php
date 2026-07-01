@@ -13,10 +13,16 @@ final class EventMetadata
     public function __construct(
         public readonly ?string $correlationId = null,
         public readonly ?string $causationId = null,
+        public readonly ?string $traceparent = null,
     ) {}
 
     public static function none(): self
     {
         return new self();
+    }
+
+    public function withTraceparent(?string $traceparent): self
+    {
+        return new self($this->correlationId, $this->causationId, $traceparent);
     }
 }

@@ -1,0 +1,8 @@
+# Test overrides (loaded after services.yaml). Record metrics in memory — the
+# RoadRunner metrics RPC is unavailable in tests — and expose the recorder so
+# functional tests can assert business counters.
+services:
+    App\Observability\Metrics\InMemoryMetrics:
+        public: true
+
+    App\Observability\Metrics\Metrics: '@App\Observability\Metrics\InMemoryMetrics'

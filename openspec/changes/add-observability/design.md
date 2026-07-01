@@ -36,10 +36,10 @@ authless ping kept for API clients).
   putting them under `/api` (probes shouldn't carry an API key).
 
 ### D2: Relay heartbeat for readiness
-The relay checkpoint row (`projection_checkpoints` name `outbox`) gains an `updated_at` column,
-written every relay loop (even when idle). `ReadinessProbe` treats the relay as live when
-`now - updated_at < READINESS_RELAY_MAX_AGE` (default 30s). The column is added to
-`LedgerSchemaProvider` and a migration generated via `doctrine:migrations:diff` — never hand-written.
+The relay checkpoint row (`projection_checkpoints` name `outbox`) already carries an `updated_at`
+column (added with the checkpoint tables in earlier changes), so **no migration is needed**. The
+relay `touch()`es it every loop (even when idle); `ReadinessProbe` treats the relay as live when
+`now - updated_at < READINESS_RELAY_MAX_AGE` (default 30s).
 
 - *Alternatives rejected:* "outbox not backlogged" as readiness (a *stopped* relay with an empty
   backlog would look ready); a separate heartbeat table (an extra column is enough).
@@ -66,13 +66,19 @@ isolated from serving traffic.
   this); pushing to a statsd/pushgateway (RR pull is simpler here).
 
 ### D4: OpenTelemetry tracing with W3C context in event metadata
-A `Tracer` abstraction wraps the OTel SDK (`open-telemetry/sdk` + OTLP exporter); when
-`OTEL_EXPORTER_OTLP_ENDPOINT` is unset it is a **no-op**, so tests and CLI need no collector. Spans:
-`http.request` (root, from the RR request) → `command.dispatch` (in `CommandBus`) → `event.append`
-(in the event store) → `outbox.relay` → `projection.project`. The sync path shares context in-process.
-For the **async** hop, the originating `traceparent` is stored in `EventMetadata` (D5); the relay and
-projectors start their spans as children of that context, so a transfer's trace is continuous across
-processes. The active trace id is exposed to logging (D6).
+A `Tracer` abstraction wraps the OTel SDK (`open-telemetry/sdk`); it is a **no-op** unless
+`OTEL_TRACING_ENABLED` is set, so tests and CLI need no collector. Spans are created at the pipeline
+seams — `command.dispatch` (in `CommandBus`) → `outbox.relay` → `projection.project`. Event append is
+represented not by a separate span but by the **`traceparent` stamped into the event metadata** at
+append time (from the active command span); the relay and projectors `continueTrace()` from that
+`traceparent`, so a transfer's trace is continuous across processes. The active trace id is mirrored
+into `CorrelationContext` for logging (D6).
+
+The **OTLP wire-exporter is deferred to `add-deployment`**: `open-telemetry/exporter-otlp` requires
+`google/protobuf ^3||^4`, which conflicts with the `protobuf 5` pulled in by the RoadRunner packages.
+So the enabled path currently uses the SDK's in-memory exporter (local/dev tracing and tests); the
+collector export is wired once that conflict is resolved. A dedicated `http.request` root span is
+likewise left for `add-deployment` (it needs split start/end across the RR request lifecycle).
 
 - *Alternatives rejected:* auto-instrumentation (`open-telemetry/opentelemetry-auto-symfony` needs
   the `ext-opentelemetry` C extension — avoid the build dependency; manual spans are explicit and

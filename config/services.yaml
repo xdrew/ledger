@@ -5,6 +5,8 @@ services:
         bind:
             string $projectDir: '%kernel.project_dir%'
             string $apiKey: '%env(API_KEY)%'
+            int $relayMaxAgeSeconds: '%env(int:READINESS_RELAY_MAX_AGE)%'
+            bool $tracingEnabled: '%env(bool:OTEL_TRACING_ENABLED)%'
 
     _instanceof:
         App\EventStore\Serialization\EventTypeProvider:
@@ -44,6 +46,16 @@ services:
             - '../src/Projections/Query/AccountBalance.php'
             - '../src/Projections/Query/StatementEntry.php'
             - '../src/Outbox/EventPublisher.php'
+            # Metric name constants + adapters (built by the factory / used in tests), not services.
+            - '../src/Observability/Metrics/Metric.php'
+            - '../src/Observability/Metrics/Metrics.php'
+            - '../src/Observability/Metrics/NullMetrics.php'
+            - '../src/Observability/Metrics/InMemoryMetrics.php'
+            - '../src/Observability/Metrics/RoadRunnerMetrics.php'
+            # Tracer adapters are built by the factory (OtelTracer is not autowirable).
+            - '../src/Observability/Tracing/Tracer.php'
+            - '../src/Observability/Tracing/NoopTracer.php'
+            - '../src/Observability/Tracing/OtelTracer.php'
             # HTTP controllers are registered (and tagged) by the App\Api\ block below.
             - '../src/Api/'
 
@@ -54,6 +66,11 @@ services:
         exclude:
             - '../src/Api/*/*/Request.php'
             - '../src/Api/*/*/Response.php'
+        tags: ['controller.service_arguments']
+
+    # Ops controllers (/healthz, /readyz) live outside /api and the firewall.
+    App\Ops\:
+        resource: '../src/Ops/*/Action.php'
         tags: ['controller.service_arguments']
 
     # Ports -> default adapters.
@@ -90,3 +107,11 @@ services:
 
     # Outbox transport: Postgres LISTEN/NOTIFY by default (NATS swaps in here).
     App\Outbox\EventPublisher: '@App\Outbox\PostgresNotifyEventPublisher'
+
+    # Metrics adapter is chosen at runtime: RoadRunner under RR, no-op otherwise.
+    App\Observability\Metrics\Metrics:
+        factory: ['@App\Observability\Metrics\MetricsFactory', 'create']
+
+    # Tracer is a no-op unless OTEL_TRACING_ENABLED; the OtelTracer wraps the OTel SDK.
+    App\Observability\Tracing\Tracer:
+        factory: ['@App\Observability\Tracing\TracerFactory', 'create']

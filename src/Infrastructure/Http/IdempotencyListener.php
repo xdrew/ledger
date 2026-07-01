@@ -10,6 +10,8 @@ use App\Idempotency\Outcome\Completed;
 use App\Idempotency\Outcome\InProgress;
 use App\Idempotency\Outcome\Mismatch;
 use App\Idempotency\StoredResponse;
+use App\Observability\Metrics\Metric;
+use App\Observability\Metrics\Metrics;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,7 +32,10 @@ final class IdempotencyListener
     private const ATTRIBUTE = '_idempotency';
     private const MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
-    public function __construct(private readonly IdempotencyStore $store) {}
+    public function __construct(
+        private readonly IdempotencyStore $store,
+        private readonly Metrics $metrics,
+    ) {}
 
     #[AsEventListener(event: KernelEvents::REQUEST, priority: 4)]
     public function onRequest(RequestEvent $event): void
@@ -57,6 +62,7 @@ final class IdempotencyListener
 
         switch (true) {
             case $outcome instanceof Completed:
+                $this->metrics->incrementCounter(Metric::IDEMPOTENCY_REPLAYS_TOTAL);
                 $event->setResponse($this->replay($outcome->response));
 
                 break;

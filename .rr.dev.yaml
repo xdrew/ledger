@@ -20,3 +20,21 @@ logs:
       level: info
     server:
       level: info
+
+# RPC endpoint — required for the app to push metrics to the plugin (RR injects
+# its address into workers/services as RR_RPC).
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+# Prometheus metrics endpoint (RR runtime metrics + app business metrics via RPC),
+# on a separate port from serving traffic.
+metrics:
+  address: 0.0.0.0:2112
+
+# Refresh the DB-derived gauges on an interval so scrapes stay current.
+service:
+  metrics-collect:
+    command: "sh -c 'while true; do php bin/console metrics:collect; sleep 10; done'"
+    process_num: 1
+    remain_after_exit: true
+    restart_sec: 5

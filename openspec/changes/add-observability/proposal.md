@@ -19,11 +19,12 @@ structured JSON logs correlated by id, and the Grafana dashboard + alert-rule de
     gauges `holds_active`, `outbox_pending`, `projection_lag_seconds`. Counters increment at the
     event points; DB-derived gauges are refreshed by a `metrics:collect` command (run on an interval
     by the RoadRunner service scheduler) and by the relay/projection loops.
-- **Distributed tracing (OpenTelemetry):** a root span per HTTP request, child spans for command
-  dispatch → event append → outbox relay → projection, exported via OTLP (endpoint from env; a no-op
-  tracer when unset so tests/CLI need no collector). Cross-process continuity uses a **W3C
-  `traceparent` carried in event metadata**, so relay/projector spans link back to the request that
-  produced the event. The active trace id is added to every log line.
+- **Distributed tracing (OpenTelemetry):** spans at the pipeline seams — command dispatch → outbox
+  relay → projection — with event append represented by a **W3C `traceparent` carried in event
+  metadata**, so relay/projector spans continue the trace across processes. A no-op tracer unless
+  tracing is enabled, so tests/CLI need no collector. The active trace id is added to every log line.
+  (The OTLP wire-exporter and a dedicated `http.request` root span are deferred to `add-deployment`:
+  the OTLP protobuf exporter conflicts with the RoadRunner packages' protobuf major version.)
 - **Structured logging:** Monolog emits **JSON to stderr** (12-factor), level from `LOG_LEVEL`, with
   a processor that adds `correlation_id`, `causation_id`, and `trace_id` to every record.
 - **Deliverables:** a **Grafana dashboard JSON** (golden signals + the business metrics) and
@@ -51,11 +52,13 @@ structured JSON logs correlated by id, and the Grafana dashboard + alert-rule de
   saga, journal posting, idempotency listener, relay, and projection runner.
 - **Config:** `.rr.yaml` / `.rr.dev.yaml` gain a `metrics` plugin (separate port) and a
   `metrics:collect` service; `config/packages/monolog.yaml` switches `main` to the JSON formatter +
-  processor; new env (`OTEL_EXPORTER_OTLP_ENDPOINT`, `METRICS_ENABLED`, readiness thresholds).
-- **Schema:** the outbox relay checkpoint gains an `updated_at` heartbeat column (via the
-  `LedgerSchemaProvider` + a generated migration) for `/readyz`.
+  processor; new env (`OTEL_TRACING_ENABLED`, `READINESS_RELAY_MAX_AGE`).
+- **Schema:** none — the relay checkpoint's `updated_at` heartbeat column already exists from the
+  earlier checkpoint tables; the relay just touches it each loop.
 - **Dependencies (new):** `spiral/roadrunner-metrics` (RR metrics RPC); the OpenTelemetry PHP SDK
-  (`open-telemetry/sdk` + OTLP exporter) used manually (no auto-instrumentation extension).
+  (`open-telemetry/sdk`) used manually (no auto-instrumentation extension). The OTLP exporter is
+  intentionally not added (protobuf conflict with the RoadRunner packages); it lands in
+  `add-deployment`.
 - **Depends on** the api, outbox, projections, transfers, ledger, and idempotency capabilities.
   The compose services (`prometheus`, `grafana`, `otel-collector`) and Helm `ServiceMonitor`/probes
   are wired in `add-deployment`; this change provides the endpoints, metrics, spans, and assets they

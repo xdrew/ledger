@@ -8,6 +8,9 @@ use App\Accounts\Application\DepositFunds;
 use App\Accounts\Application\DepositFundsHandler;
 use App\Accounts\Application\OpenAccount;
 use App\Accounts\Application\OpenAccountHandler;
+use App\Observability\Logging\CorrelationContext;
+use App\Observability\Tracing\NoopTracer;
+use App\Observability\Tracing\Tracer;
 use App\SharedKernel\Clock\Clock;
 use App\Transfers\Application\InitiateTransfer;
 use App\Transfers\Application\InitiateTransferHandler;
@@ -34,12 +37,17 @@ final class CommandBus
     /** @var Handlers<NoTransaction> */
     private readonly Handlers $handlers;
 
+    private readonly Tracer $tracer;
+
     public function __construct(
         OpenAccountHandler $openAccount,
         DepositFundsHandler $depositFunds,
         InitiateTransferHandler $initiateTransfer,
         private readonly Clock $clock,
+        private readonly ?CorrelationContext $correlation = null,
+        ?Tracer $tracer = null,
     ) {
+        $this->tracer = $tracer ?? new NoopTracer();
         $this->handlers = (new Handlers())
             ->with(OpenAccount::class, $openAccount(...))
             ->with(DepositFunds::class, $depositFunds(...))
@@ -49,6 +57,7 @@ final class CommandBus
     public function dispatch(object $command, ?string $correlationId = null): void
     {
         $id = Uuid::uuid7()->toString();
+        $correlationId ??= $this->correlation?->correlationId;
         $conversationId = $correlationId !== null && $correlationId !== '' ? $correlationId : $id;
 
         $metadata = new Metadata(
@@ -60,6 +69,10 @@ final class CommandBus
             createdAt: $this->clock->now(),
         );
 
-        $this->handlers->handle($command, new Context(self::ENDPOINT, $metadata, new NoTransaction()));
+        $this->tracer->span(
+            'command.dispatch',
+            fn() => $this->handlers->handle($command, new Context(self::ENDPOINT, $metadata, new NoTransaction())),
+            ['command' => $command::class],
+        );
     }
 }

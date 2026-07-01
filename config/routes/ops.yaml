@@ -1,0 +1,3 @@
+ops:
+    resource: ../../src/Ops/
+    type: attribute

@@ -1,0 +1,77 @@
+{
+  "uid": "ledger-core",
+  "title": "Ledger Core",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["ledger", "payments"],
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request latency p99",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(rr_http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "HTTP requests by status",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "sum(rate(rr_http_requests_total[5m])) by (status)", "legendFormat": "{{status}}" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Transfers by status",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "sum(rate(transfers_total[5m])) by (status)", "legendFormat": "{{status}}" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Journal entries posted",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [{ "expr": "rate(journal_entries_total[5m])", "legendFormat": "entries/s" }]
+    },
+    {
+      "id": 5,
+      "title": "Active holds",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 16 },
+      "targets": [{ "expr": "holds_active" }]
+    },
+    {
+      "id": 6,
+      "title": "Outbox pending",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 16 },
+      "targets": [{ "expr": "outbox_pending" }]
+    },
+    {
+      "id": 7,
+      "title": "Projection lag (seconds)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 16 },
+      "targets": [{ "expr": "projection_lag_seconds" }]
+    },
+    {
+      "id": 8,
+      "title": "Idempotent replays",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 16 },
+      "targets": [{ "expr": "rate(idempotency_replays_total[5m])", "legendFormat": "replays/s" }]
+    }
+  ]
+}

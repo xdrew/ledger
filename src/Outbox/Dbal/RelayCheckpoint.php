@@ -37,4 +37,28 @@ final class RelayCheckpoint
             ['position' => ParameterType::INTEGER],
         );
     }
+
+    /**
+     * Bump the heartbeat without moving the position, so an idle relay still
+     * signals liveness for `/readyz`.
+     */
+    public function touch(): void
+    {
+        $this->connection->executeStatement(
+            'INSERT INTO projection_checkpoints (name, position, updated_at)
+             VALUES (:name, 0, now())
+             ON CONFLICT (name) DO UPDATE SET updated_at = now()',
+            ['name' => self::NAME],
+        );
+    }
+
+    public function lastHeartbeat(): ?\DateTimeImmutable
+    {
+        $raw = $this->connection->fetchOne(
+            'SELECT updated_at FROM projection_checkpoints WHERE name = :name',
+            ['name' => self::NAME],
+        );
+
+        return \is_string($raw) ? new \DateTimeImmutable($raw) : null;
+    }
 }

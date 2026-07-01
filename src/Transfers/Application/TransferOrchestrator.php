@@ -14,6 +14,8 @@ use App\Ledger\Domain\JournalEntryId;
 use App\Ledger\Domain\JournalPostingService;
 use App\Ledger\Domain\LedgerRepository;
 use App\Ledger\Domain\Leg;
+use App\Observability\Metrics\Metric;
+use App\Observability\Metrics\Metrics;
 use App\SharedKernel\Money\Money;
 use App\Transfers\Domain\Exception\TransferNotReversible;
 use App\Transfers\Domain\FailureReason;
@@ -34,6 +36,7 @@ final class TransferOrchestrator
         private readonly AccountRepository $accounts,
         private readonly LedgerRepository $ledger,
         private readonly JournalPostingService $posting,
+        private readonly Metrics $metrics,
     ) {}
 
     public function initiate(InitiateTransfer $command): Transfer
@@ -92,6 +95,7 @@ final class TransferOrchestrator
                 Leg::credit(AccountRef::fromString($destinationId->toString()), $amount),
             );
             $this->ledger->save($journalEntry);
+            $this->metrics->incrementCounter(Metric::JOURNAL_ENTRIES_TOTAL);
         } catch (\Throwable $error) {
             $this->releaseHold($sourceId, $amount);
 
@@ -118,6 +122,7 @@ final class TransferOrchestrator
 
         $transfer->complete();
         $this->transfers->save($transfer);
+        $this->metrics->incrementCounter(Metric::TRANSFERS_TOTAL, ['status' => 'completed']);
 
         return $transfer;
     }
@@ -126,6 +131,7 @@ final class TransferOrchestrator
     {
         $transfer->fail($reason);
         $this->transfers->save($transfer);
+        $this->metrics->incrementCounter(Metric::TRANSFERS_TOTAL, ['status' => 'failed']);
 
         return $transfer;
     }

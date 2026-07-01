@@ -79,6 +79,25 @@ final class DbalEventStoreTest extends KernelTestCase
     }
 
     #[Test]
+    public function traceContextRoundTripsThroughTheStore(): void
+    {
+        $stream = StreamId::of('counter', 'trace-1');
+        $traceparent = '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01';
+        $this->store->append($stream, 0, [new SomethingHappened('x', 1)], new EventMetadata('c', null, $traceparent));
+
+        self::assertSame($traceparent, $this->store->load($stream)[0]->metadata->traceparent);
+    }
+
+    #[Test]
+    public function eventsWithoutTraceContextStillLoad(): void
+    {
+        $stream = StreamId::of('counter', 'trace-2');
+        $this->store->append($stream, 0, [new SomethingHappened('x', 1)], new EventMetadata('c'));
+
+        self::assertNull($this->store->load($stream)[0]->metadata->traceparent);
+    }
+
+    #[Test]
     public function assignsContiguousVersions(): void
     {
         $stream = StreamId::of('counter', 'c-1');

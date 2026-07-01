@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Outbox;
 
 use App\EventStore\EventStore;
+use App\Observability\Tracing\NoopTracer;
+use App\Observability\Tracing\Tracer;
 use App\Outbox\Dbal\RelayCheckpoint;
 
 /**
@@ -17,11 +19,16 @@ final class OutboxRelay
 {
     private const BATCH_SIZE = 500;
 
+    private readonly Tracer $tracer;
+
     public function __construct(
         private readonly EventStore $eventStore,
         private readonly EventPublisher $publisher,
         private readonly RelayCheckpoint $checkpoint,
-    ) {}
+        ?Tracer $tracer = null,
+    ) {
+        $this->tracer = $tracer ?? new NoopTracer();
+    }
 
     /**
      * Publish pending events. With $maxEvents set, stops after that many (used to
@@ -29,6 +36,9 @@ final class OutboxRelay
      */
     public function relay(?int $maxEvents = null): int
     {
+        // Beat the heartbeat every cycle so an idle relay still reports live to /readyz.
+        $this->checkpoint->touch();
+
         $published = 0;
 
         while ($maxEvents === null || $published < $maxEvents) {
@@ -38,7 +48,12 @@ final class OutboxRelay
             }
 
             foreach ($events as $event) {
-                $this->publisher->publish($event);
+                $this->tracer->continueTrace(
+                    $event->metadata->traceparent,
+                    'outbox.relay',
+                    fn() => $this->publisher->publish($event),
+                    ['event_type' => $event->eventType],
+                );
                 if ($event->globalPosition !== null) {
                     $this->checkpoint->save($event->globalPosition);
                 }

@@ -15,6 +15,7 @@ use App\Ledger\Domain\JournalPostingService;
 use App\Ledger\Infrastructure\AccountRepositoryStatusReader;
 use App\Ledger\Infrastructure\EventSourcedLedgerRepository;
 use App\Ledger\Infrastructure\LedgerEventTypes;
+use App\Observability\Metrics\InMemoryMetrics;
 use App\SharedKernel\Money\Currency;
 use App\SharedKernel\Money\Money;
 use App\Transfers\Application\TransferOrchestrator;
@@ -35,13 +36,16 @@ final class TransferTestEnvironment
 
     public readonly TransferOrchestrator $orchestrator;
 
+    public readonly InMemoryMetrics $metrics;
+
     public function __construct(EventStore $store, EventSourcedAccountRepository $accounts)
     {
         $this->accounts = $accounts;
         $this->ledger = new EventSourcedLedgerRepository($store);
         $this->transfers = new EventSourcedTransferRepository($store);
+        $this->metrics = new InMemoryMetrics();
         $posting = new JournalPostingService(new AccountRepositoryStatusReader($accounts));
-        $this->orchestrator = new TransferOrchestrator($this->transfers, $accounts, $this->ledger, $posting);
+        $this->orchestrator = new TransferOrchestrator($this->transfers, $accounts, $this->ledger, $posting, $this->metrics);
     }
 
     public static function registry(): EventTypeRegistry

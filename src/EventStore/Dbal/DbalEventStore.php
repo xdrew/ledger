@@ -10,6 +10,8 @@ use App\EventStore\EventStore;
 use App\EventStore\RecordedEvent;
 use App\EventStore\Serialization\EventSerializer;
 use App\EventStore\StreamId;
+use App\Observability\Tracing\NoopTracer;
+use App\Observability\Tracing\Tracer;
 use App\SharedKernel\Clock\Clock;
 use App\SharedKernel\Event\EventId;
 use Doctrine\DBAL\Connection;
@@ -34,11 +36,16 @@ final class DbalEventStore implements EventStore
             (:event_id, :stream_type, :stream_id, :version, :event_type, :schema_version, CAST(:payload AS JSONB), CAST(:metadata AS JSONB), :occurred_at, :recorded_at)
         SQL;
 
+    private readonly Tracer $tracer;
+
     public function __construct(
         private readonly Connection $connection,
         private readonly EventSerializer $serializer,
         private readonly Clock $clock,
-    ) {}
+        ?Tracer $tracer = null,
+    ) {
+        $this->tracer = $tracer ?? new NoopTracer();
+    }
 
     public function append(StreamId $streamId, int $expectedVersion, array $events, ?EventMetadata $metadata = null): void
     {
@@ -46,7 +53,9 @@ final class DbalEventStore implements EventStore
             return;
         }
 
-        $metadata ??= EventMetadata::none();
+        // Stamp the active trace onto the events so async consumers can continue it.
+        $base = $metadata ?? EventMetadata::none();
+        $metadata = $base->withTraceparent($base->traceparent ?? $this->tracer->currentTraceparent());
 
         $this->connection->beginTransaction();
 
@@ -74,6 +83,7 @@ final class DbalEventStore implements EventStore
                         'metadata' => $this->encodeJson([
                             'correlation_id' => $metadata->correlationId,
                             'causation_id' => $metadata->causationId,
+                            'traceparent' => $metadata->traceparent,
                         ]),
                         'occurred_at' => $this->clock->now()->format('Y-m-d H:i:s.uP'),
                         'recorded_at' => $this->clock->now()->format('Y-m-d H:i:s.uP'),
@@ -149,6 +159,7 @@ final class DbalEventStore implements EventStore
             new EventMetadata(
                 self::asNullableString($rawMetadata['correlation_id'] ?? null),
                 self::asNullableString($rawMetadata['causation_id'] ?? null),
+                self::asNullableString($rawMetadata['traceparent'] ?? null),
             ),
             self::asInt($row['global_position'] ?? 0),
         );

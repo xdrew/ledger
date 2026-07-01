@@ -46,20 +46,20 @@ application code stay decoupled from the exposition mechanism.
 
 ### Requirement: Distributed tracing
 
-The system SHALL produce OpenTelemetry spans across the pipeline — HTTP request → command dispatch →
-event append → outbox relay → projection — linked into a single trace, and SHALL include the active
-trace id in log records. Tracing SHALL be a no-op when no OTLP endpoint is configured, so tests and
-CLI usage need no collector.
+The system SHALL produce OpenTelemetry spans at the pipeline seams — command dispatch, outbox relay,
+and projection — linked into a single trace, carrying the trace context across the asynchronous hop
+via a W3C `traceparent` stored in event metadata, and SHALL include the active trace id in log
+records. Tracing SHALL be a no-op when disabled, so tests and CLI usage need no collector.
 
-#### Scenario: A transfer produces a continuous trace
+#### Scenario: A continuous trace across the async hop
 
-- **WHEN** a transfer is created over HTTP and later projected
-- **THEN** the request, command, event append, relay, and projection spans share one trace id
+- **WHEN** a command's event is later relayed and projected
+- **THEN** the command, relay, and projection spans share one trace id, continued from the event's `traceparent`
 
 #### Scenario: Tracing disabled needs no collector
 
-- **WHEN** no OTLP endpoint is configured
-- **THEN** requests succeed and no tracing error is raised
+- **WHEN** tracing is disabled
+- **THEN** requests succeed, spans are not recorded, and no tracing error is raised
 
 ### Requirement: Structured JSON logging
 

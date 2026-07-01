@@ -1,0 +1,41 @@
+# Prometheus alerting rules for ledger-core. Loaded by Prometheus (rule_files)
+# in add-deployment. Metric names match the business metrics emitted by the app
+# and the RoadRunner metrics plugin.
+groups:
+  - name: ledger-core
+    rules:
+      - alert: ProjectionLagHigh
+        expr: projection_lag_seconds > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Projection lag above 30s for 5m"
+          description: "Read models are falling behind the event stream; check the projection worker."
+
+      - alert: OutboxBacklogGrowing
+        expr: outbox_pending > 100 and delta(outbox_pending[10m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox backlog growing"
+          description: "The relay is not keeping up with appended events; check the relay worker and the transport."
+
+      - alert: RequestLatencyP99SloBurn
+        expr: histogram_quantile(0.99, sum(rate(rr_http_request_duration_seconds_bucket[5m])) by (le)) > 0.5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Request p99 latency above the 500ms SLO"
+          description: "The API p99 latency has exceeded the SLO target for 5m."
+
+      - alert: NotReady
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance is down or not scraping"
+          description: "Prometheus cannot scrape the target; check liveness/readiness."
