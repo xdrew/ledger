@@ -29,22 +29,24 @@ beyond a single static API key (no users/roles/JWT); statement pagination; the N
 
 ## Decisions
 
-### D1: Serve under RoadRunner via a hand-rolled `spiral/roadrunner-http` worker
-Travel uses `baldinof/roadrunner-bundle`, but that bundle's latest release only supports
-`symfony/config` up to ^7 — **it is not Symfony 8-compatible** (confirmed at implementation:
-`composer require` fails to resolve). So instead of the bundle, `public/worker.php` is a thin worker
-over `spiral/roadrunner-http` (the same library the bundle wraps): it boots the Kernel once and
-loops `waitRequest()` → bridge PSR-7 to HttpFoundation (`nyholm/psr7` +
-`symfony/psr-http-message-bridge`) → `Kernel::handle()` → respond → `Kernel::terminate()`.
-`public/index.php` remains the standard Symfony runtime front controller (FPM/built-in server).
-`.rr.yaml` (prod) and `.rr.dev.yaml` (dev) configure the HTTP plugin and worker pool; the `rr` binary
-and `ext-sockets` are baked into the dev image and the compose `http` service runs
-`rr serve -c .rr.dev.yaml`. Tests use `WebTestCase` (kernel-level), so the suite is fast and needs no
-running RoadRunner; a `task smoke` run verifies the server actually boots and serves `/api/health`.
+### D1: Serve under RoadRunner via `baldinof/roadrunner-bundle` (the travel setup)
+`public/index.php` returns the Kernel through `vendor/autoload_runtime.php`; the bundle's runtime
+(`APP_RUNTIME: Baldinof\RoadRunnerBundle\Runtime\Runtime`) drives the worker loop and resets the
+container between requests. `.rr.yaml` (prod) and `.rr.dev.yaml` (dev) configure the HTTP plugin and
+worker pool; the `rr` binary and `ext-sockets` (required by `spiral/roadrunner-worker`) are baked
+into the dev image, and the compose `http` service runs `rr serve -c .rr.dev.yaml`. PSR-7 ⇄
+HttpFoundation bridging is handled by the bundle (`nyholm/psr7` + the Symfony bridge). Tests use
+`WebTestCase` (kernel-level), so the suite is fast and needs no running RoadRunner; a `task smoke`
+run verifies the server actually boots and serves `/api/health`.
 
-- *Alternatives rejected:* `baldinof/roadrunner-bundle` (not Symfony 8-compatible yet); PHP-FPM/Apache
-  (the project standardized on RoadRunner); deferring RoadRunner to deployment (the reviewer chose to
-  wire it here). A proper production runtime/reset is set up later in `add-deployment`.
+Note: `baldinof/roadrunner-bundle` **does** run on Symfony 8 (3.3.2 here). The initial resolution
+failure was `ext-sockets` missing from the dev image (a `spiral/roadrunner-worker` platform
+requirement), not a `symfony/config` conflict; installing `ext-sockets` fixed it. A brief hand-rolled
+worker over `spiral/roadrunner-http` was replaced by the bundle once that was understood.
+
+- *Alternatives rejected:* PHP-FPM/Apache (the project standardized on RoadRunner); deferring
+  RoadRunner to deployment (the reviewer chose to wire it here); a hand-rolled `spiral/roadrunner-http`
+  worker (only needed if the bundle were incompatible — it is not).
 
 ### D2: Invokable `Action` controllers in per-endpoint directories (travel layout)
 Each endpoint is `App\Api\{Module}\{Operation}\Action` with a `#[Route]` on `__invoke`, a sibling
@@ -132,10 +134,8 @@ before asserting reads.
 - **RoadRunner adds runtime/build moving parts (binary, worker, ext-sockets, .rr.yaml)** →
   Mitigation: tests run on the Symfony kernel (no RoadRunner needed); `task smoke` verifies the
   server boots and serves `/api/health`.
-- **The hand-rolled worker reuses one booted Kernel across requests** → Mitigation: the API is
-  stateless (stateless firewall, no session); a production runtime with per-request reset is set up
-  in `add-deployment`. (baldinof/roadrunner-bundle, which provides that reset, is not yet Symfony
-  8-compatible.)
+- **Long-lived workers can leak state between requests** → Mitigation: `baldinof/roadrunner-bundle`
+  resets the container between requests, and the API is stateless (stateless firewall, no session).
 - **The reflection generator can under-describe responses** → Mitigation: functional tests assert
   the real response shapes per endpoint; the generator test asserts the document's structure.
 - **Eventual consistency surprises clients** → Mitigation: documented (ADR-003); reads carry the
