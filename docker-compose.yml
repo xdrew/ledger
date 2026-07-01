@@ -1,5 +1,21 @@
 name: ledger-core
 
+# Production-image services (api/worker/migrate/seed) share one build + config.
+x-prod: &prod
+  build:
+    context: .
+    dockerfile: docker/php/Dockerfile.prod
+  image: ledger-core:prod
+  env_file:
+    - .env
+  environment:
+    # The image is built for prod; keep it prod even though .env defaults to dev.
+    APP_ENV: prod
+    APP_DEBUG: "0"
+    # Demonstrate the full tracing pipeline: export spans to the collector.
+    OTEL_TRACING_ENABLED: "1"
+    OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+
 services:
   postgres:
     image: postgres:18
@@ -8,14 +24,13 @@ services:
       POSTGRES_PASSWORD: ledger
       POSTGRES_DB: ledger
     ports:
-      # Host port is only for external tooling; the app reaches Postgres over the
+      # Host port is only for external tooling; services reach Postgres over the
       # internal network. Defaults to 5433 to avoid clashing with a local
       # PostgreSQL on 5432. Override with POSTGRES_HOST_PORT.
       - "${POSTGRES_HOST_PORT:-5433}:5432"
     volumes:
       # PostgreSQL 18+ images expect the mount at /var/lib/postgresql (the data
-      # then lives in a major-version subdirectory). Mounting .../data directly,
-      # as in older images, makes the entrypoint refuse to start.
+      # then lives in a major-version subdirectory).
       - pgdata:/var/lib/postgresql
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
@@ -24,6 +39,8 @@ services:
       timeout: 5s
       retries: 10
 
+  # Dev tooling container (source-mounted): composer, console, and the test suites
+  # run here via `docker compose exec app ...`.
   app:
     build:
       context: .
@@ -36,27 +53,71 @@ services:
     volumes:
       - .:/app
     working_dir: /app
-    # Console-only app: keep the container alive so `docker compose exec app ...`
-    # can run composer, the console, and the test suites.
     command: ["tail", "-f", "/dev/null"]
 
-  # HTTP API served by RoadRunner (dev config). The production multi-stage image
-  # and tuning come in add-deployment.
-  http:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
+  # Apply migrations once, then exit. Nothing else migrates on boot.
+  migrate:
+    <<: *prod
     depends_on:
       postgres:
         condition: service_healthy
-    env_file:
-      - .env
-    volumes:
-      - .:/app
-    working_dir: /app
-    command: ["rr", "serve", "-c", ".rr.dev.yaml"]
+    command: ["migrate"]
+    restart: "no"
+
+  # Populate demo data once the schema exists.
+  seed:
+    <<: *prod
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["seed"]
+    restart: "no"
+
+  # HTTP API (production image + config).
+  api:
+    <<: *prod
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["api"]
     ports:
       - "${HTTP_HOST_PORT:-8080}:8080"
+
+  # Worker: outbox relay + projections + metrics collector.
+  worker:
+    <<: *prod
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["worker"]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    depends_on: [api, worker]
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/observability/alerts.yaml:/etc/prometheus/alerts.yaml:ro
+    ports:
+      - "${PROMETHEUS_HOST_PORT:-9090}:9090"
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    depends_on: [prometheus]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/observability/grafana-dashboard.json:/var/lib/grafana/dashboards/ledger.json:ro
+    ports:
+      - "${GRAFANA_HOST_PORT:-3000}:3000"
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.115.1
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./docker/otel-collector/config.yaml:/etc/otel/config.yaml:ro
 
 volumes:
   pgdata:

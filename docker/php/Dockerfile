@@ -3,10 +3,10 @@
 # test suites, and the RoadRunner HTTP worker for local serving.
 FROM php:8.5-cli
 
-# ext-sockets is required by spiral/roadrunner-worker (the RoadRunner worker).
+# ext-sockets: spiral/roadrunner-worker; ext-pcntl: the worker loop's signal handling.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git unzip libpq-dev \
-    && docker-php-ext-install -j"$(nproc)" pdo_pgsql sockets \
+    && docker-php-ext-install -j"$(nproc)" pdo_pgsql sockets pcntl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

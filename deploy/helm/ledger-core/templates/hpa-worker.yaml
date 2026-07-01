@@ -1,0 +1,34 @@
+{{- if .Values.worker.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "ledger-core.fullname" . }}-worker
+  labels:
+    {{- include "ledger-core.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "ledger-core.fullname" . }}-worker
+  minReplicas: {{ .Values.worker.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.worker.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.worker.autoscaling.projectionLag.enabled }}
+    # Requires a Prometheus metrics adapter exposing projection_lag_seconds.
+    - type: Pods
+      pods:
+        metric:
+          name: projection_lag_seconds
+        target:
+          type: AverageValue
+          averageValue: "{{ .Values.worker.autoscaling.projectionLag.targetSeconds }}"
+    {{- else }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.worker.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ledger-core.fullname" . }}-config
+  labels:
+    {{- include "ledger-core.labels" . | nindent 4 }}
+data:
+  APP_ENV: {{ .Values.config.appEnv | quote }}
+  APP_DEBUG: "0"
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  IDEMPOTENCY_TTL_SECONDS: {{ .Values.config.idempotencyTtlSeconds | quote }}
+  READINESS_RELAY_MAX_AGE: {{ .Values.config.readinessRelayMaxAge | quote }}
+  OTEL_TRACING_ENABLED: {{ .Values.config.otelTracingEnabled | quote }}

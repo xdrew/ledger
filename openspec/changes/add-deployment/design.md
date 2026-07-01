@@ -79,14 +79,15 @@ values flag; pods also carry Prometheus scrape annotations), `pdb.yaml`, and `_h
 - *Alternatives rejected:* raw manifests / Kustomize (the brief prefers a Helm chart); running
   migrations via an init container (a Helm hook Job decouples them from every pod start).
 
-### D6: Tracing export / protobuf reconciliation
+### D6: Tracing export / protobuf reconciliation — resolved
 add-observability deferred the PHP OTLP exporter because `open-telemetry/exporter-otlp` needs
-`google/protobuf ^3||^4` while the RoadRunner packages pulled `protobuf 5`. This change **attempts**
-`composer require open-telemetry/exporter-otlp` while pinning `google/protobuf:^4` (the RoadRunner
-2025 packages allow `^4||^5`). If it resolves, `OtelTracer`'s exporter becomes OTLP →
-`otel-collector` (endpoint from env) and a smoke run shows spans arriving. If the pin cannot satisfy
-both, the collector stays wired for future use and PHP→collector export remains the single
-documented deferral — tracing behaviour is otherwise unchanged.
+`google/protobuf ^3||^4` while the RoadRunner packages had pulled `protobuf 5`. It turns out
+`roadrunner-php/roadrunner-api-dto` allows `google/protobuf ^4.31.1 || ^5.34.0`, so pinning
+`google/protobuf:^4.31.1` satisfies both. `open-telemetry/exporter-otlp` is now installed;
+`TracerFactory` exports over **OTLP/HTTP** to `OTEL_EXPORTER_OTLP_ENDPOINT` (the `otel-collector`)
+when tracing is enabled and an endpoint is set, and to the in-memory exporter otherwise (local/dev).
+Verified live: a `command.dispatch` span and the worker's `projection.project` span for the same
+event arrive at the collector sharing one trace id (continuous cross-process trace).
 
 ## Risks / Trade-offs
 

@@ -36,6 +36,40 @@ task down      # stop and wipe volumes
 `docker compose up -d --build`, `docker compose exec app composer install`,
 `docker compose exec app php bin/console …`, and `docker compose exec app composer test`.
 
+## Run the full stack locally
+
+`task up:stack` (or `docker compose up -d --build migrate seed api worker prometheus grafana
+otel-collector`) brings up the production-image **api** and **worker**, runs migrations and a
+**seed** step, and starts Prometheus, Grafana, and an OpenTelemetry collector. Then:
+
+- API: <http://localhost:8080> (`GET /healthz`, `GET /readyz`; business endpoints under `/api`,
+  `X-Api-Key: local_dev_api_key`)
+- Metrics: the api and worker expose `:2112`; Prometheus at <http://localhost:9090> scrapes both.
+- Grafana at <http://localhost:3000> (anonymous admin) with the **Ledger Core** dashboard.
+- Traces (enabled in the compose demo) export via OTLP to the collector.
+
+## Deploy to Kubernetes (Helm)
+
+A chart lives at `deploy/helm/ledger-core` — separate **api** and **worker** Deployments, probes
+wired to `/healthz` / `/readyz`, an HPA, DB migrations as a pre-install/pre-upgrade Job (never on
+boot), a PodDisruptionBudget, and graceful shutdown. Quickstart on a local `kind` cluster:
+
+```sh
+kind create cluster --name ledger
+# Build the image and load it into the cluster:
+docker build -f docker/php/Dockerfile.prod -t ledger-core:prod .
+kind load docker-image ledger-core:prod --name ledger
+# Bring up PostgreSQL (e.g. Bitnami) and point DATABASE_URL at it, then:
+helm install ledger deploy/helm/ledger-core \
+  --set secret.databaseUrl="postgresql://ledger:ledger@postgres:5432/ledger?serverVersion=18&charset=utf8" \
+  --set secret.apiKey="$(openssl rand -hex 16)" \
+  --set secret.appSecret="$(openssl rand -hex 16)"
+kubectl port-forward svc/ledger-ledger-core-api 8080:80
+```
+
+`helm lint deploy/helm/ledger-core` and `helm template deploy/helm/ledger-core` validate the chart
+without a cluster.
+
 ## How to rebuild a projection
 
 Not applicable yet — projections arrive in `add-projections` (a `projections:rebuild`

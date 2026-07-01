@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ledger-core.fullname" . }}-api
+  labels:
+    {{- include "ledger-core.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  {{- if not .Values.api.autoscaling.enabled }}
+  replicas: {{ .Values.api.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ledger-core.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "ledger-core.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+      {{- if not .Values.serviceMonitor.enabled }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2112"
+      {{- end }}
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      containers:
+        - name: api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["api"]
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: metrics
+              containerPort: 2112
+          envFrom:
+            {{- include "ledger-core.envFrom" . | nindent 12 }}
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            failureThreshold: 30
+            periodSeconds: 2
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 10
+          lifecycle:
+            preStop:
+              exec:
+                command: ["rr", "stop"]
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}

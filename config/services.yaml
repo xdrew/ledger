@@ -7,6 +7,7 @@ services:
             string $apiKey: '%env(API_KEY)%'
             int $relayMaxAgeSeconds: '%env(int:READINESS_RELAY_MAX_AGE)%'
             bool $tracingEnabled: '%env(bool:OTEL_TRACING_ENABLED)%'
+            string $otlpEndpoint: '%env(OTEL_EXPORTER_OTLP_ENDPOINT)%'
 
     _instanceof:
         App\EventStore\Serialization\EventTypeProvider:

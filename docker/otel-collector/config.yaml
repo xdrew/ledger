@@ -1,0 +1,24 @@
+# Minimal OpenTelemetry collector: receive OTLP (gRPC + HTTP) and log spans.
+# Ready for the app's OTLP exporter once it is enabled (see the deployment change);
+# swap the `debug` exporter for a real backend (Tempo/Jaeger) in a full setup.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+
+exporters:
+  debug:
+    verbosity: normal
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]

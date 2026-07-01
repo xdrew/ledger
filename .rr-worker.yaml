@@ -1,0 +1,33 @@
+version: "3"
+
+# Worker runtime: no HTTP. RoadRunner supervises the outbox relay, the projection
+# catch-up, and the metrics collector. The relay/projection loops live in PHP
+# (--loop) so SIGTERM drains cleanly between iterations.
+
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+# Prometheus metrics for the worker (DB-derived gauges + counters it emits).
+metrics:
+  address: 0.0.0.0:2112
+
+logs:
+  mode: production
+  encoding: json
+
+service:
+  outbox-relay:
+    command: "php bin/console outbox:relay --loop --interval=1"
+    process_num: 1
+    remain_after_exit: true
+    restart_sec: 5
+  projections:
+    command: "php bin/console projections:run --loop --interval=1"
+    process_num: 1
+    remain_after_exit: true
+    restart_sec: 5
+  metrics-collect:
+    command: "sh -c 'while true; do php bin/console metrics:collect; sleep 10; done'"
+    process_num: 1
+    remain_after_exit: true
+    restart_sec: 5

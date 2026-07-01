@@ -1,0 +1,63 @@
+image:
+  repository: ledger-core
+  tag: prod
+  pullPolicy: IfNotPresent
+
+# Non-secret configuration (rendered into a ConfigMap).
+config:
+  appEnv: prod
+  logLevel: info
+  idempotencyTtlSeconds: "86400"
+  readinessRelayMaxAge: "30"
+  otelTracingEnabled: "0"
+
+# Secrets — override via --set or an external/sealed secret in real clusters.
+secret:
+  databaseUrl: "postgresql://ledger:ledger@postgres:5432/ledger?serverVersion=18&charset=utf8"
+  apiKey: "change-me"
+  appSecret: "change-me"
+
+api:
+  replicas: 2
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: "1", memory: 512Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+
+worker:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: "1", memory: 512Mi }
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+    # When a Prometheus metrics adapter is installed, scale on projection lag.
+    projectionLag:
+      enabled: false
+      targetSeconds: 30
+
+service:
+  type: ClusterIP
+  port: 80
+
+# DB migrations run as a pre-install/pre-upgrade Job — never on app boot.
+migrations:
+  enabled: true
+
+# Prometheus Operator ServiceMonitor (else pods carry scrape annotations).
+serviceMonitor:
+  enabled: false
+  interval: 15s
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+terminationGracePeriodSeconds: 30

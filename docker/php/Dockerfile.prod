@@ -1,0 +1,58 @@
+# syntax=docker/dockerfile:1
+# Production image: multi-stage, non-root. One image runs the API or the worker,
+# selected by the entrypoint role. The dev image (Dockerfile) stays for tooling.
+
+# --- builder: production dependencies only ---
+FROM php:8.5-cli AS builder
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git unzip libpq-dev \
+    && docker-php-ext-install -j"$(nproc)" pdo_pgsql sockets pcntl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1
+WORKDIR /app
+
+COPY composer.json composer.lock ./
+COPY src ./src
+RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist \
+        --classmap-authoritative --no-progress
+
+# --- runtime ---
+FROM php:8.5-cli AS runtime
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq-dev \
+    && docker-php-ext-install -j"$(nproc)" pdo_pgsql sockets pcntl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# The RoadRunner server binary.
+COPY --from=ghcr.io/roadrunner-server/roadrunner:2024 /usr/bin/rr /usr/local/bin/rr
+
+# Non-root runtime user.
+RUN useradd --system --create-home --uid 1000 app
+WORKDIR /app
+
+COPY --chown=app:app --from=builder /app/vendor ./vendor
+# composer.json marks the project root — Symfony's getProjectDir() walks up to
+# find it; without it, config/ resolves to the wrong directory.
+COPY --chown=app:app composer.json composer.lock ./
+COPY --chown=app:app bin ./bin
+COPY --chown=app:app config ./config
+COPY --chown=app:app migrations ./migrations
+COPY --chown=app:app public ./public
+COPY --chown=app:app src ./src
+# Non-secret defaults; real env (Dockerfile ENV / compose / k8s) takes precedence.
+COPY --chown=app:app .env ./
+COPY --chown=app:app .rr.yaml .rr-worker.yaml ./
+COPY --chown=app:app docker/php/entrypoint.sh /usr/local/bin/entrypoint
+
+RUN chmod +x /usr/local/bin/entrypoint && mkdir -p var && chown -R app:app var
+
+USER app
+ENV APP_ENV=prod APP_DEBUG=0
+EXPOSE 8080 2112
+ENTRYPOINT ["entrypoint"]
+CMD ["api"]

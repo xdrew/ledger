@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ledger-core.fullname" . }}-worker
+  labels:
+    {{- include "ledger-core.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  {{- if not .Values.worker.autoscaling.enabled }}
+  replicas: {{ .Values.worker.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ledger-core.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "ledger-core.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+      {{- if not .Values.serviceMonitor.enabled }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2112"
+      {{- end }}
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      containers:
+        - name: worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["worker"]
+          ports:
+            - name: metrics
+              containerPort: 2112
+          envFrom:
+            {{- include "ledger-core.envFrom" . | nindent 12 }}
+          # No HTTP: liveness is the metrics port answering (RoadRunner is up).
+          livenessProbe:
+            tcpSocket: { port: metrics }
+            periodSeconds: 15
+          lifecycle:
+            preStop:
+              exec:
+                command: ["rr", "stop"]
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}

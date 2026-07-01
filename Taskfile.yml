@@ -93,17 +93,22 @@ tasks:
       - task: test:integration
       - task: test:functional
 
+  up:stack:
+    desc: Bring up the full deployment stack (api, worker, postgres, prometheus, grafana, otel) migrated + seeded
+    cmds:
+      - "{{.COMPOSE}} up -d --build migrate seed api worker prometheus grafana otel-collector"
+
   serve:
     desc: Serve the HTTP API via RoadRunner (http://localhost:8080)
     cmds:
-      - "{{.COMPOSE}} up -d http"
+      - "{{.COMPOSE}} up -d --build api"
 
   smoke:
-    desc: Smoke-test the running RoadRunner server (GET /api/health)
+    desc: Smoke-test the running RoadRunner server (GET /healthz)
     cmds:
-      - "{{.COMPOSE}} up -d http"
-      - 'until curl -fsS http://localhost:${HTTP_HOST_PORT:-8080}/api/health >/dev/null 2>&1; do sleep 1; done'
-      - 'curl -fsS http://localhost:${HTTP_HOST_PORT:-8080}/api/health && echo'
+      - "{{.COMPOSE}} up -d --build api"
+      - 'until curl -fsS http://localhost:${HTTP_HOST_PORT:-8080}/healthz >/dev/null 2>&1; do sleep 1; done'
+      - 'curl -fsS http://localhost:${HTTP_HOST_PORT:-8080}/healthz && echo'
 
   spec:
     desc: Validate all OpenSpec changes strictly

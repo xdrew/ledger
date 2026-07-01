@@ -35,10 +35,9 @@ autoscaling, a migration job, scrape config, and graceful shutdown.
   - **`PodDisruptionBudget`** and **graceful shutdown** (termination grace period + a `preStop`
     `rr stop` so in-flight requests/jobs drain) — important for the saga/worker.
   - A **kind/minikube quickstart** in the `README`.
-- **Tracing export**: the `otel-collector` is added to the stack ready to receive OTLP. Installing
-  the PHP OTLP exporter is attempted by pinning `google/protobuf` to a version common to the OTel
-  exporter and the RoadRunner packages; if they cannot be reconciled, the collector stays wired and
-  the PHP→collector export remains the one deferred item (documented), tracing otherwise unchanged.
+- **Tracing export** (resolves the observability deferral): the PHP OTLP exporter installs by pinning
+  `google/protobuf:^4.31.1` (common to the OTel exporter and the RoadRunner packages). `TracerFactory`
+  now exports spans over OTLP/HTTP to the `otel-collector` when tracing is enabled with an endpoint.
 
 ## Capabilities
 
