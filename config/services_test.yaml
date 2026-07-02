@@ -6,3 +6,8 @@ services:
         public: true
 
     App\Observability\Metrics\Metrics: '@App\Observability\Metrics\InMemoryMetrics'
+
+    # NL statement queries: deterministic fake — CI never calls the Anthropic API.
+    App\Tests\Support\FakeStatementQueryTranslator: ~
+
+    App\Infrastructure\NlQuery\StatementQueryTranslator: '@App\Tests\Support\FakeStatementQueryTranslator'

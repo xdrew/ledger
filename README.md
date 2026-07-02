@@ -108,6 +108,25 @@ kubectl port-forward svc/ledger-ledger-core-api 8080:80
 `helm lint deploy/helm/ledger-core` and `helm template deploy/helm/ledger-core` validate the chart
 without a cluster.
 
+## Natural-language statement queries (optional, flag-gated)
+
+With `LLM_STATEMENT_QUERY_ENABLED=1` and a real `ANTHROPIC_API_KEY` in the environment, the
+statement endpoint accepts a question:
+
+```sh
+curl -H 'X-Api-Key: …' 'localhost:8080/api/accounts/{id}/statement?q=how much did I deposit in June'
+```
+
+The Anthropic API (official PHP SDK, structured outputs) translates the question into a typed
+filter — entry types, date range, amount range, aggregation — which runs as parameterized SQL over
+the `account_statement` read model; `sum`/`count` are computed by the database, never by the model.
+Every response echoes the **interpretation** (the applied filter), so you always see how the
+question was understood. Flag off → `501`; translation failure → `502` — the endpoint never guesses.
+Model via `LLM_MODEL` (default `claude-opus-4-8`; e.g. `claude-haiku-4-5` for cost). Honest limit:
+the read model has no counterparty column, so "who" questions filter by direction/date/amount only.
+CI never calls the API (a deterministic fake serves the tests); a live smoke is: flag on, key set,
+run the curl above.
+
 ## How to rebuild a projection
 
 Read models are disposable by design (ADR-003):

@@ -6,6 +6,7 @@
     "require": {
         "php": ">=8.5",
         "ext-pdo": "*",
+        "anthropic-ai/sdk": "^0.35.1",
         "baldinof/roadrunner-bundle": "^3.3",
         "doctrine/dbal": "^4.0",
         "doctrine/doctrine-bundle": "^3.2",

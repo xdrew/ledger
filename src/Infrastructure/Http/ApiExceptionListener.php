@@ -9,6 +9,7 @@ use App\Accounts\Domain\Exception\AccountNotFound;
 use App\Accounts\Domain\Exception\InsufficientFunds;
 use App\Accounts\Domain\Exception\InvalidAmount;
 use App\EventStore\ConcurrencyConflict;
+use App\Infrastructure\NlQuery\TranslationFailed;
 use App\Ledger\Domain\Exception\ClosedAccountPosting;
 use App\Ledger\Domain\Exception\InvalidLegAmount;
 use App\Ledger\Domain\Exception\JournalEntryNotFound;
@@ -52,7 +53,9 @@ final readonly class ApiExceptionListener
             return;
         }
 
-        $detail = $status >= 500 ? 'An unexpected error occurred.' : $exception->getMessage();
+        // Only the catch-all 500 masks its message (unknown internals); deliberate
+        // 5xx like 501 (feature disabled) and 502 (translation failed) are ours.
+        $detail = $status === 500 ? 'An unexpected error occurred.' : $exception->getMessage();
         $event->setResponse(ProblemDetails::response($status, $detail));
     }
 
@@ -76,6 +79,7 @@ final readonly class ApiExceptionListener
             $exception instanceof InvalidLegAmount,
             $exception instanceof UnbalancedEntry,
             $exception instanceof \InvalidArgumentException => 422,
+            $exception instanceof TranslationFailed => 502,
             default => 500,
         };
     }

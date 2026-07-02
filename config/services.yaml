@@ -8,6 +8,7 @@ services:
             int $relayMaxAgeSeconds: '%env(int:READINESS_RELAY_MAX_AGE)%'
             bool $tracingEnabled: '%env(bool:OTEL_TRACING_ENABLED)%'
             string $otlpEndpoint: '%env(OTEL_EXPORTER_OTLP_ENDPOINT)%'
+            bool $llmStatementQueryEnabled: '%env(bool:LLM_STATEMENT_QUERY_ENABLED)%'
 
     _instanceof:
         App\EventStore\Serialization\EventTypeProvider:
@@ -50,6 +51,10 @@ services:
             - '../src/Projections/Projector.php'
             - '../src/Projections/Query/AccountBalance.php'
             - '../src/Projections/Query/StatementEntry.php'
+            - '../src/Projections/Query/StatementFilter.php'
+            - '../src/Projections/Query/FilteredStatement.php'
+            - '../src/Infrastructure/NlQuery/StatementQueryTranslator.php'
+            - '../src/Infrastructure/NlQuery/TranslationFailed.php'
             - '../src/Outbox/EventPublisher.php'
             # Metric name constants + adapters (built by the factory / used in tests), not services.
             - '../src/Observability/Metrics/Metric.php'
@@ -125,3 +130,14 @@ services:
     # Tracer is a no-op unless OTEL_TRACING_ENABLED; the OtelTracer wraps the OTel SDK.
     App\Observability\Tracing\Tracer:
         factory: ['@App\Observability\Tracing\TracerFactory', 'create']
+
+    # Natural-language statement queries (flag-gated): Anthropic SDK client + translator.
+    Anthropic\Client:
+        arguments:
+            $apiKey: '%env(ANTHROPIC_API_KEY)%'
+
+    App\Infrastructure\NlQuery\AnthropicStatementQueryTranslator:
+        arguments:
+            $model: '%env(LLM_MODEL)%'
+
+    App\Infrastructure\NlQuery\StatementQueryTranslator: '@App\Infrastructure\NlQuery\AnthropicStatementQueryTranslator'
