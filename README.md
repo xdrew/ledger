@@ -84,7 +84,15 @@ console command).
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs the early/cheap gate on every push and PR: OpenSpec
-strict spec validation → composer validate → lint → PHPStan (max) → unit tests →
-integration tests (against a PostgreSQL service). The remaining stages (mutation testing,
-container build, CD smoke) are added in `add-ci`.
+`.github/workflows/ci.yml` runs staged jobs, each gating the next:
+
+1. **quality** (every push/PR): OpenSpec strict spec validation (first, before PHP installs) →
+   composer validate → lint → PHPStan (max) → unit → integration → functional tests (against a
+   PostgreSQL service) → Helm chart lint/template.
+2. **mutation** (needs quality): Infection on the domain layer, unit-suite-only, **blocking**
+   at `--min-msi=80` (measured ~86%). Locally: `task infection`.
+3. **build** (needs quality): the production image builds via buildx on every run; pushes to
+   GHCR (`latest` + commit SHA) on `main` using the built-in `GITHUB_TOKEN`.
+4. **cd-smoke** (`main` only, needs build): a `kind` cluster gets PostgreSQL and the freshly
+   built image, `helm install` runs the migration hook and waits for probes, then the job seeds
+   demo data and runs one end-to-end transfer against the in-cluster API, asserting `completed`.

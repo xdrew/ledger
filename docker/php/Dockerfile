@@ -3,10 +3,15 @@
 # test suites, and the RoadRunner HTTP worker for local serving.
 FROM php:8.5-cli
 
-# ext-sockets: spiral/roadrunner-worker; ext-pcntl: the worker loop's signal handling.
+# ext-sockets: spiral/roadrunner-worker; ext-pcntl: the worker loop's signal
+# handling; pcov: code coverage for mutation testing (disabled by default,
+# enabled per-run via -d pcov.enabled=1).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git unzip libpq-dev \
     && docker-php-ext-install -j"$(nproc)" pdo_pgsql sockets pcntl \
+    && pecl install pcov \
+    && docker-php-ext-enable pcov \
+    && echo "pcov.enabled=0" > /usr/local/etc/php/conf.d/pcov-default.ini \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

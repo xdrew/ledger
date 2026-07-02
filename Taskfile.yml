@@ -71,6 +71,11 @@ tasks:
     cmds:
       - "{{.APP}} vendor/bin/phpstan analyse --memory-limit=512M"
 
+  infection:
+    desc: Mutation testing on the domain layer (blocking MSI floor)
+    cmds:
+      - "{{.APP}} vendor/bin/infection --min-msi=80 --no-progress"
+
   test:unit:
     desc: Run the unit suite
     cmds:

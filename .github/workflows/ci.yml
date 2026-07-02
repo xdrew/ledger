@@ -5,8 +5,9 @@ on:
   pull_request:
 
 jobs:
-  # Early, cheap gate (brief §7.1–§7.5). The full pipeline — mutation testing,
-  # container build, CD smoke — is added in `add-ci`.
+  # Stage 1 (brief §7.1–§7.5 + helm validation): fail-fast quality gate.
+  # The spec gate runs first — before PHP is even installed — so invalid specs
+  # fail the build early and cheap.
   quality:
     runs-on: ubuntu-latest
 
@@ -41,7 +42,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
-          extensions: pdo_pgsql
+          extensions: pdo_pgsql, sockets, pcntl
           coverage: none
           tools: composer:v2
 
@@ -52,7 +53,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/composer
-          key: composer-${{ hashFiles('composer.json') }}
+          key: composer-${{ hashFiles('composer.lock', 'vendor-bin/tools/composer.json') }}
           restore-keys: composer-
 
       - name: Install dependencies
@@ -69,3 +70,168 @@ jobs:
 
       - name: Integration tests
         run: vendor/bin/phpunit --testsuite integration
+
+      - name: Functional tests (HTTP API)
+        run: vendor/bin/phpunit --testsuite functional
+
+      - name: Helm chart (lint + template)
+        run: |
+          helm lint deploy/helm/ledger-core
+          helm template smoke deploy/helm/ledger-core > /dev/null
+
+  # Stage 2 (§7.6): mutation testing on the domain layer. Unit-suite-only, so no
+  # database. Blocking: the MSI floor sits below the measured score (86%) to
+  # catch gutted tests, not to flake.
+  mutation:
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_pgsql, sockets, pcntl
+          coverage: pcov
+          tools: composer:v2
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ hashFiles('composer.lock', 'vendor-bin/tools/composer.json') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Infection (domain, min MSI 80)
+        run: vendor/bin/infection --min-msi=80 --no-progress --logger-github
+
+  # Stage 3 (§7.7): the production image builds on every run; main pushes to GHCR.
+  build:
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/ledger-core
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
+
+      - name: Build (and push on main)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/php/Dockerfile.prod
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Stage 4 (§7.8, main only): install the chart on a kind cluster with the image
+  # from this run, wait for probes, seed, and run one e2e transfer.
+  cd-smoke:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the production image for kind
+        run: docker build -f docker/php/Dockerfile.prod -t ledger-core:prod .
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: ledger
+
+      - name: Load the image into kind
+        run: kind load docker-image ledger-core:prod --name ledger
+
+      - name: Deploy PostgreSQL
+        run: |
+          kubectl apply -f - <<'EOF'
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: postgres
+          spec:
+            selector:
+              matchLabels: { app: postgres }
+            template:
+              metadata:
+                labels: { app: postgres }
+              spec:
+                containers:
+                  - name: postgres
+                    image: postgres:18
+                    env:
+                      - { name: POSTGRES_USER, value: ledger }
+                      - { name: POSTGRES_PASSWORD, value: ledger }
+                      - { name: POSTGRES_DB, value: ledger }
+                    ports:
+                      - containerPort: 5432
+                    readinessProbe:
+                      exec: { command: ["pg_isready", "-U", "ledger"] }
+                      periodSeconds: 2
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: postgres
+          spec:
+            selector: { app: postgres }
+            ports:
+              - port: 5432
+          EOF
+          kubectl rollout status deploy/postgres --timeout=120s
+
+      - name: Install the chart (migration hook + probes)
+        run: |
+          helm install ledger deploy/helm/ledger-core \
+            --set image.pullPolicy=Never \
+            --set secret.apiKey=ci-smoke-key \
+            --set api.autoscaling.enabled=false \
+            --set api.replicas=1 \
+            --wait --timeout 5m
+
+      - name: Deployments are ready (probes green)
+        run: |
+          kubectl rollout status deploy/ledger-ledger-core-api --timeout=180s
+          kubectl rollout status deploy/ledger-ledger-core-worker --timeout=180s
+
+      - name: Seed demo data
+        run: kubectl exec deploy/ledger-ledger-core-api -- php bin/console app:seed
+
+      - name: E2E transfer completes
+        run: |
+          kubectl port-forward svc/ledger-ledger-core-api 8080:80 &
+          sleep 3
+          H=(-H "X-Api-Key: ci-smoke-key" -H "Content-Type: application/json")
+          SRC=$(curl -sf "${H[@]}" -H 'Idempotency-Key: e2e-src' -d '{"currency":"USD"}' localhost:8080/api/accounts | jq -r .accountId)
+          DST=$(curl -sf "${H[@]}" -H 'Idempotency-Key: e2e-dst' -d '{"currency":"USD"}' localhost:8080/api/accounts | jq -r .accountId)
+          curl -sf "${H[@]}" -H 'Idempotency-Key: e2e-dep' -d '{"amount":10000,"currency":"USD"}' "localhost:8080/api/accounts/$SRC/deposits" > /dev/null
+          RESULT=$(curl -sf "${H[@]}" -H 'Idempotency-Key: e2e-tr' -d "{\"sourceAccountId\":\"$SRC\",\"destinationAccountId\":\"$DST\",\"amount\":10000,\"currency\":\"USD\"}" localhost:8080/api/transfers)
+          echo "$RESULT"
+          echo "$RESULT" | jq -e '.status == "completed"'
