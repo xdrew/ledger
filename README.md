@@ -8,15 +8,53 @@ Work proceeds strictly through [OpenSpec](https://github.com/Fission-AI/OpenSpec
 `openspec/project.md` for vision, stack, and architecture, and `openspec/changes/` for the
 change-by-change plan.
 
-> **Status:** project skeleton (`add-project-skeleton`). A runnable PHP 8.5 / Symfony 8
-> console app on PostgreSQL 18, with migrations, test suites, and an early CI gate. The
-> domain (event store, accounts, ledger, transfers, …) is built in subsequent changes.
+> **Status:** all functional and ops capabilities are built and archived — event store,
+> accounts, double-entry ledger, transfer saga, idempotency, projections, outbox, message
+> bus, HTTP API (RoadRunner), observability, deployment (compose + Helm), CI. Docs:
+> [ADRs](docs/adr/) · [design](docs/design.md) · [runbook](docs/runbook.md) · [SLOs](docs/slo.md).
 
 ## Stack
 
-- PHP 8.5, Symfony 8 (console + DI; HTTP/RoadRunner arrive in `add-http-api`)
-- PostgreSQL 18, Doctrine DBAL (no ORM on the write side), Doctrine Migrations
+- PHP 8.5, Symfony 8, RoadRunner (HTTP + worker host), thesis/message-bus (in-process commands)
+- PostgreSQL 18, Doctrine DBAL (no ORM on the write side), Doctrine Migrations (always generated)
+- Prometheus + Grafana + OpenTelemetry; Docker/Helm for packaging
 - Everything runs in Docker — no PHP/Composer needed on the host.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    C[Client] -->|X-Api-Key + Idempotency-Key| API
+
+    subgraph API [api — RoadRunner]
+        A[Action controllers] -->|commands| CB[CommandBus]
+        A -->|queries| RM
+    end
+
+    CB --> ORCH[Transfer saga<br/>hold → post → settle]
+    CB --> ES[(events<br/>append-only log)]
+    ORCH --> ES
+
+    subgraph WORKER [worker — RoadRunner]
+        REL[Outbox relay] --> PUB[pg NOTIFY / NATS]
+        PROJ[Projections] --> RM[(read models)]
+    end
+
+    ES -->|tail from checkpoint| REL
+    ES -->|tail from checkpoint| PROJ
+```
+
+The write side is **event-sourced** (append-only `events` table; UNIQUE stream+version as the
+optimistic-concurrency guard — ADR-001); the event log doubles as the **transactional outbox**
+(ADR-002); reads come from **rebuildable projections** and are eventually consistent, with the
+projection `version` exposed on responses (ADR-003); transfers run as an **orchestrated saga**
+whose only compensation is releasing the hold (ADR-005).
+
+**Bounded contexts** (`src/`): `Accounts` (balances, holds, lifecycle) · `Ledger` (double-entry
+journal, balanced legs) · `Transfers` (the saga) · `SharedKernel` (Money, ids, clock) — plus
+infrastructure capabilities: `EventStore`, `Idempotency`, `Projections`, `Outbox`, `Messaging`,
+`Api`, `Observability`, `Ops`. Contexts interact through events and ports (e.g. the ledger checks
+account status via `AccountStatusReader`), never through each other's internals.
 
 ## How to run
 
@@ -27,8 +65,8 @@ Docker, so no PHP/Composer on the host:
 task up        # build + start PostgreSQL 18 and the app container
 task install   # composer install (inside the container; incl. vendor-bin tools)
 task db-ping   # verify database connectivity
-task migrate   # apply migrations (the first one — the events table — lands next change)
-task test      # unit + integration suites
+task migrate   # apply migrations (always generated via the schema provider, never hand-written)
+task test      # unit + integration + functional suites
 task down      # stop and wipe volumes
 ```
 
@@ -72,15 +110,31 @@ without a cluster.
 
 ## How to rebuild a projection
 
-Not applicable yet — projections arrive in `add-projections` (a `projections:rebuild`
-console command).
+Read models are disposable by design (ADR-003):
 
-## What is deliberately NOT built (yet / ever)
+```sh
+docker compose exec worker php bin/console projections:status    # checkpoint / head / lag
+docker compose exec worker php bin/console projections:rebuild   # truncate + replay from 0
+```
 
-- **Out of scope (non-goals):** UI/frontend, real banking rails / card networks, KYC,
-  multi-tenant auth beyond a simple API key, FX / cross-currency conversion.
-- **Deferred to later changes:** HTTP API + RoadRunner, observability (metrics/traces/
-  dashboards), deployment (production Dockerfile, Helm), and the full CI pipeline.
+Safe while the API serves traffic — reads are stale (never wrong) during the replay, and balance
+responses carry the projection `version`. Full play (expectations, verification, alert handling):
+[docs/runbook.md](docs/runbook.md).
+
+## What is deliberately NOT built (and why)
+
+- **Out of scope (non-goals):** UI/frontend; real banking rails / card networks; KYC; multi-tenant
+  auth beyond a single API key (service-to-service backend); FX / cross-currency conversion
+  (accounts are single-currency; `Money` refuses mixed-currency arithmetic).
+- **Deliberate architectural restraint:** the idempotency store and read models are plain mutable
+  tables, *not* event-sourced — over-applying ES is a cost, not a virtue (ADR-004); commands are
+  handled synchronously in-process — no async command transport until something needs it
+  (queries never touch a bus at all).
+- **Known gaps, on the roadmap:** the upcaster mechanism (strategy fixed in ADR-006; lands in
+  `add-event-upcasting`); automatic recovery of a saga interrupted mid-flight (currently a runbook
+  play — funds park in `reserved`, nothing is lost); the optional `add-llm-statement-query`.
+- **Accepted limits at this scale:** single-database availability story (99.5% SLO, `docs/slo.md`);
+  serial relay/projection tailers (the 100x partitioning path is designed in `docs/design.md`).
 
 ## Continuous integration
 
