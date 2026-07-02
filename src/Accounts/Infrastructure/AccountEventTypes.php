@@ -37,10 +37,20 @@ final class AccountEventTypes implements EventTypeProvider
         'accounts.account_closed' => AccountClosed::class,
     ];
 
+    /**
+     * Current schema versions where they have advanced beyond 1.
+     * AccountOpened v2 added `account_type` (upcast by {@see Upcasting\AccountOpenedV1ToV2}).
+     *
+     * @var array<class-string<DomainEvent>, int>
+     */
+    private const SCHEMA_VERSIONS = [
+        AccountOpened::class => 2,
+    ];
+
     public function registerInto(EventTypeRegistry $registry): void
     {
         foreach (self::TYPES as $type => $class) {
-            $registry->register($type, $class);
+            $registry->register($type, $class, self::SCHEMA_VERSIONS[$class] ?? 1);
         }
     }
 }

@@ -43,10 +43,10 @@ final class Account extends AggregateRoot
 
     private function __construct() {}
 
-    public static function open(AccountId $id, Currency $currency): self
+    public static function open(AccountId $id, Currency $currency, string $accountType = AccountOpened::DEFAULT_ACCOUNT_TYPE): self
     {
         $account = new self();
-        $account->recordThat(new AccountOpened($id->toString(), $currency->code));
+        $account->recordThat(new AccountOpened($id->toString(), $currency->code, $accountType));
 
         return $account;
     }

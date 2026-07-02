@@ -12,6 +12,8 @@ services:
     _instanceof:
         App\EventStore\Serialization\EventTypeProvider:
             tags: ['app.event_type_provider']
+        App\EventStore\Serialization\Upcaster:
+            tags: ['app.upcaster']
         App\Projections\Projector:
             tags: ['app.projector']
 
@@ -30,6 +32,8 @@ services:
             - '../src/EventStore/EventStore.php'
             - '../src/EventStore/Serialization/SerializedEvent.php'
             - '../src/EventStore/Serialization/UnknownEventType.php'
+            - '../src/EventStore/Serialization/Upcaster.php'
+            - '../src/EventStore/Serialization/MissingUpcaster.php'
             - '../src/EventStore/Aggregate/'
             - '../src/Accounts/Domain/'
             - '../src/Ledger/Domain/'
@@ -100,6 +104,11 @@ services:
 
     App\EventStore\Serialization\EventTypeRegistry:
         configurator: ['@App\EventStore\Serialization\EventTypeRegistryConfigurator', 'configure']
+
+    # Upcast-on-read (ADR-006): every tagged upcaster joins the chain.
+    App\EventStore\Serialization\UpcasterChain:
+        arguments:
+            $upcasters: !tagged_iterator app.upcaster
 
     # Projection runner receives every tagged projector.
     App\Projections\ProjectionRunner:

@@ -1,7 +1,8 @@
 # ADR-006 — Event versioning and upcasting strategy
 
 Status: Accepted (2026-07-02) · Schema versions persisted since `add-event-store-foundation`;
-upcaster mechanism pending in `add-event-upcasting`.
+upcaster mechanism implemented by `add-event-upcasting` (`Upcaster`/`UpcasterChain` in
+`src/EventStore/Serialization/`, example `AccountOpenedV1ToV2`).
 
 ## Context
 
@@ -30,11 +31,10 @@ Rules:
 - Upcasters are pure, total for their input version, and unit-tested against captured v(n)
   payload fixtures.
 
-**Honest status:** the mechanism (an `Upcaster` interface, registry wiring into
-`EventSerializer::deserialize`, and one example — `AccountOpened` v1→v2 — with tests) is **not yet
-implemented**. This ADR records the committed strategy; the follow-up change `add-event-upcasting`
-implements it. Until then, `schema_version` is persisted and round-tripped but no transformation
-occurs (all types are at v1).
+**Status:** implemented by `add-event-upcasting` — the `Upcaster` interface + `UpcasterChain`
+(missing step → loud `MissingUpcaster`), wired into `EventSerializer::deserialize`, with the
+example `AccountOpened` v1→v2 (`account_type`, default `standard`) covered by unit tests against a
+captured v1 fixture and an integration test loading a raw v1 row from PostgreSQL.
 
 ## Consequences
 
