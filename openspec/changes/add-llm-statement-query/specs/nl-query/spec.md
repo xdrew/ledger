@@ -46,9 +46,9 @@ statement; without `q`, the statement endpoint SHALL behave identically to the f
 
 ### Requirement: Translation failures never guess
 
-When translation fails — an API error, a refusal, or output that does not validate against the
-filter schema — the endpoint SHALL respond `502` problem+json. Model output SHALL be validated by
-the application before any SQL executes, rejecting unknown entry types and inverted ranges.
+The endpoint SHALL respond `502` problem+json whenever translation fails (an API error, a refusal,
+or output that does not validate against the filter schema). Model output SHALL be validated by the
+application before any SQL executes, rejecting unknown entry types and inverted ranges.
 
 #### Scenario: A translation error surfaces as 502
 
