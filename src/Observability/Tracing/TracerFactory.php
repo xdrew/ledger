@@ -8,8 +8,9 @@ use App\Observability\Logging\CorrelationContext;
 use OpenTelemetry\API\Trace\Propagation\TraceContextPropagator;
 use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
 use OpenTelemetry\Contrib\Otlp\SpanExporter as OtlpSpanExporter;
+use OpenTelemetry\SDK\Common\Time\ClockFactory;
 use OpenTelemetry\SDK\Trace\SpanExporter\InMemoryExporter;
-use OpenTelemetry\SDK\Trace\SpanExporterInterface;
+use OpenTelemetry\SDK\Trace\SpanProcessor\BatchSpanProcessor;
 use OpenTelemetry\SDK\Trace\SpanProcessor\SimpleSpanProcessor;
 use OpenTelemetry\SDK\Trace\TracerProvider;
 
@@ -32,7 +33,15 @@ final readonly class TracerFactory
             return new NoopTracer();
         }
 
-        $provider = new TracerProvider(new SimpleSpanProcessor($this->exporter()));
+        // OTLP export runs through a BatchSpanProcessor: span end only queues, and
+        // an unreachable collector drops batches instead of stalling the pipeline
+        // (SimpleSpanProcessor retries synchronously on every span end — it once
+        // froze the projection worker when the collector was absent).
+        $processor = $this->otlpEndpoint === ''
+            ? new SimpleSpanProcessor(new InMemoryExporter())
+            : new BatchSpanProcessor($this->otlpExporter(), ClockFactory::getDefault());
+
+        $provider = new TracerProvider($processor);
 
         return new OtelTracer(
             $provider->getTracer('ledger-core'),
@@ -41,12 +50,8 @@ final readonly class TracerFactory
         );
     }
 
-    private function exporter(): SpanExporterInterface
+    private function otlpExporter(): OtlpSpanExporter
     {
-        if ($this->otlpEndpoint === '') {
-            return new InMemoryExporter();
-        }
-
         $transport = (new OtlpHttpTransportFactory())
             ->create(rtrim($this->otlpEndpoint, '/') . '/v1/traces', 'application/x-protobuf');
 

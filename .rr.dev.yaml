@@ -34,7 +34,7 @@ metrics:
 # Refresh the DB-derived gauges on an interval so scrapes stay current.
 service:
   metrics-collect:
-    command: "sh -c 'while true; do php bin/console metrics:collect; sleep 10; done'"
+    command: "php bin/console metrics:collect --loop --interval=10"
     process_num: 1
     remain_after_exit: true
     restart_sec: 5
