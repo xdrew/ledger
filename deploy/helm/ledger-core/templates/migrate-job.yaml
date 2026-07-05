@@ -26,5 +26,10 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: ["migrate"]
           envFrom:
-            {{- include "ledger-core.envFrom" . | nindent 12 }}
+            # Hook-scoped copies (migrate-env.yaml) — the release ConfigMap/
+            # Secret don't exist yet when pre-install hooks run.
+            - configMapRef:
+                name: {{ include "ledger-core.fullname" . }}-migrate-config
+            - secretRef:
+                name: {{ include "ledger-core.fullname" . }}-migrate-secret
 {{- end }}

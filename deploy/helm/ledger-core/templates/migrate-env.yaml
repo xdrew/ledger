@@ -1,0 +1,37 @@
+{{- if .Values.migrations.enabled }}
+{{/*
+Hook-scoped copies of the release ConfigMap/Secret for the migration Job.
+Pre-install hooks run before regular release resources exist, so on a fresh
+install the Job cannot reference the main ConfigMap/Secret — its pod would sit
+in CreateContainerConfigError until helm times out. Weight -10 puts these
+before the Job (-5); hook-succeeded cleans them up once migrations pass.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ledger-core.fullname" . }}-migrate-config
+  labels:
+    {{- include "ledger-core.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+data:
+  {{- include "ledger-core.configData" . | nindent 2 }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "ledger-core.fullname" . }}-migrate-secret
+  labels:
+    {{- include "ledger-core.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+type: Opaque
+stringData:
+  {{- include "ledger-core.secretData" . | nindent 2 }}
+{{- end }}
