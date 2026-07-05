@@ -622,6 +622,19 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         track("accounts", r.json.accountId, label);
         return r.json.accountId;
     }
+    // A remembered id can outlive the backend (stack restarted under an open
+    // page): validate it against the write side and reopen the actor if its
+    // stream is gone — scenarios must never target ghosts of a previous db.
+    async function ensureAccount(label) {
+        const id = state.accounts[label];
+        if (id) {
+            const res = await fetch("/api/accounts/" + id + "/events", { headers: { "X-Api-Key": keyInput.value } });
+            if (res.ok) return id;
+            delete state.accounts[label];
+            state.streams = state.streams.filter(st => st.id !== id);
+        }
+        return openAccount(label);
+    }
     const transferBody = (from, to, minor) => ({ sourceAccountId: from, destinationAccountId: to, amount: minor, currency: "USD" });
 
     /* ---------- the story ---------- */
@@ -633,7 +646,8 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         await settleAndShow();
     };
     $("s2").onclick = async () => {
-        await api("POST", "/api/accounts/" + state.accounts.alice + "/deposits", { amount: 10000, currency: "USD" }, idem());
+        const alice = await ensureAccount("alice");
+        await api("POST", "/api/accounts/" + alice + "/deposits", { amount: 10000, currency: "USD" }, idem());
         moveMoney({ amount: 10000, from: "world", to: "alice" });
         caption("<strong>Write, then read.</strong> The deposit appended an event; the balance is a projection that catches up asynchronously — watch its version tick. The API returned before the read model updated.");
         enable("s3", "s4");
@@ -641,7 +655,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     };
     $("s3").onclick = async () => {
         const key = idem();
-        const body = transferBody(state.accounts.alice, state.accounts.bob, 3000);
+        const body = transferBody(await ensureAccount("alice"), await ensureAccount("bob"), 3000);
         const r = await api("POST", "/api/transfers", body, key);
         if (r.json?.transferId) track("transfers", r.json.transferId, "t1");
         moveMoney({ amount: 3000, from: "alice", to: "bob" });
@@ -652,7 +666,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         await settleAndShow();
     };
     $("s4").onclick = async () => {
-        const r = await api("POST", "/api/transfers", transferBody(state.accounts.alice, state.accounts.bob, 50000), idem());
+        const r = await api("POST", "/api/transfers", transferBody(await ensureAccount("alice"), await ensureAccount("bob"), 50000), idem());
         if (r.json?.transferId) track("transfers", r.json.transferId, "t2");
         moveMoney({ amount: 50000, from: "alice", to: "bob", outcome: "refuse", reason: r.json?.failureReason ?? "failed" });
         caption("<strong>A business failure is an outcome, not an error.</strong> 201 with status <em>failed</em> and a reason — the attempt itself is a recorded fact on the transfer stream. No account event was written.");
@@ -749,7 +763,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     $("race").onclick = async () => {
         caption("<strong>1 · Setting up.</strong> Opening a fresh account (racer) on the map and funding it with exactly 50.00 — enough for one of the two transfers.");
         const src = await openAccount("racer");
-        const dst = state.accounts.alice ?? await openAccount("alice");
+        const dst = await ensureAccount("alice");
         await api("POST", "/api/accounts/" + src + "/deposits", { amount: 5000, currency: "USD" }, idem());
         await refreshBalances(); // the racer node appears before the coins launch
         caption("<strong>2 · Fired in the same instant.</strong> Requests A and B leave together — watch the map: two wires from racer, one gate on the route.");
@@ -773,16 +787,16 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         caption("<strong>Idempotency is payload-bound.</strong> The same key with a <em>different</em> body is a client bug, not a retry — 422, nothing executed.");
     };
     $("e2").onclick = async () => {
-        await api("POST", "/api/accounts/" + state.accounts.alice + "/deposits", { amount: 0, currency: "USD" }, idem());
+        await api("POST", "/api/accounts/" + await ensureAccount("alice") + "/deposits", { amount: 0, currency: "USD" }, idem());
         caption("<strong>Validated at the boundary.</strong> Amounts are positive integers in minor units — the 422 names the field. The domain never saw this request.");
     };
     $("e3").onclick = async () => {
-        await api("POST", "/api/accounts/" + state.accounts.alice + "/deposits", { amount: 1000, currency: "EUR" }, idem());
+        await api("POST", "/api/accounts/" + await ensureAccount("alice") + "/deposits", { amount: 1000, currency: "EUR" }, idem());
         caption("<strong>Money refuses mixed currencies.</strong> Accounts are single-currency; the Money value object rejects EUR into a USD account — 422 from the domain invariant.");
     };
     $("e4").onclick = async () => {
         const ghost = crypto.randomUUID();
-        const r = await api("POST", "/api/transfers", transferBody(state.accounts.alice, ghost, 1000), idem());
+        const r = await api("POST", "/api/transfers", transferBody(await ensureAccount("alice"), ghost, 1000), idem());
         if (r.json?.transferId) track("transfers", r.json.transferId, "ghost");
         moveMoney({ amount: 1000, from: "alice", to: "ghost", outcome: "bounce", reason: r.json?.failureReason ?? "no such account" });
         caption("<strong>Compensation, visible.</strong> The hold succeeded, the journal post found no destination, so the saga released the hold — <em>funds_held</em> then <em>hold_released</em> on alice’s stream, balance intact.");
@@ -793,7 +807,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     $("nlgo").onclick = async () => {
         const q = $("nlq").value.trim();
         if (!q) return;
-        const r = await api("GET", "/api/accounts/" + state.accounts.alice + "/statement?q=" + encodeURIComponent(q));
+        const r = await api("GET", "/api/accounts/" + await ensureAccount("alice") + "/statement?q=" + encodeURIComponent(q));
         caption(r.status === 200
             ? "<strong>The model translated; SQL answered.</strong> The <em>interpretation</em> echoes the structured filter the question became — the LLM never sees the data, and aggregates are computed by the database."
             : r.status === 501
