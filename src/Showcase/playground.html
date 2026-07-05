@@ -620,6 +620,15 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         if (r.status !== 201) return null;
         state.accounts[label] = r.json.accountId;
         track("accounts", r.json.accountId, label);
+        // A fresh account may take over an existing card (e.g. each race retires
+        // the previous racer): reset it so the old balance can't masquerade.
+        const node = document.querySelector('.map .node[data-name="' + label + '"]');
+        if (node) {
+            node.querySelector(".bal").textContent = "\u2026";
+            const sub = node.querySelector(".sub");
+            sub.textContent = "awaiting projection";
+            sub.className = "sub";
+        }
         return r.json.accountId;
     }
     // A remembered id can outlive the backend (stack restarted under an open
@@ -761,11 +770,12 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
     /* ---------- the race ---------- */    /* ---------- the race ---------- */
     $("race").onclick = async () => {
-        caption("<strong>1 · Setting up.</strong> Opening a fresh account (racer) on the map and funding it with exactly 50.00 — enough for one of the two transfers.");
+        caption("<strong>1 · Setting up.</strong> Every run retires the old racer and opens a fresh one, funded with exactly 50.00 — enough for one of the two transfers. Watch the 50.00 arrive first.");
         const src = await openAccount("racer");
         const dst = await ensureAccount("alice");
         await api("POST", "/api/accounts/" + src + "/deposits", { amount: 5000, currency: "USD" }, idem());
-        await refreshBalances(); // the racer node appears before the coins launch
+        await moveMoney({ amount: 5000, from: "world", to: "racer" }); // the funding, visibly
+        await refreshBalances(); // the racer card catches up before the coins launch
         caption("<strong>2 · Fired in the same instant.</strong> Requests A and B leave together — watch the map: two wires from racer, one gate on the route.");
         const [a, b] = await Promise.all([
             api("POST", "/api/transfers", transferBody(src, dst, 5000), idem(), "A"),
