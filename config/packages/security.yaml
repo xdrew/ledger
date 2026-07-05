@@ -18,8 +18,9 @@ security:
             entry_point: App\Infrastructure\Http\ApiKeyAuthenticator
 
     access_control:
-        # Public surface: liveness and the OpenAPI document need no key.
+        # Public surface: liveness, the OpenAPI document, and its docs page need no key.
         - { path: ^/api/health, roles: PUBLIC_ACCESS }
         - { path: ^/api/openapi, roles: PUBLIC_ACCESS }
+        - { path: ^/api/docs, roles: PUBLIC_ACCESS }
         # Everything else under /api requires a valid API key.
         - { path: ^/api, roles: ROLE_API }

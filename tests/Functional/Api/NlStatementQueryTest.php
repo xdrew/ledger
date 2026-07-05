@@ -13,10 +13,18 @@ use PHPUnit\Framework\Attributes\Test;
  */
 final class NlStatementQueryTest extends ApiTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Force the flag on for this class regardless of the container's real env
+        // (a real LLM_STATEMENT_QUERY_ENABLED=0 outranks .env.test in dotenv).
+        $_SERVER['LLM_STATEMENT_QUERY_ENABLED'] = $_ENV['LLM_STATEMENT_QUERY_ENABLED'] = '1';
+    }
+
     protected function tearDown(): void
     {
-        // Restore the .env.test default (on) — unsetting would erase it for the
-        // rest of the suite, since bootEnv only runs once per process.
+        // Restore on — unsetting would erase it for the rest of the suite,
+        // since bootEnv only runs once per process.
         $_SERVER['LLM_STATEMENT_QUERY_ENABLED'] = $_ENV['LLM_STATEMENT_QUERY_ENABLED'] = '1';
         parent::tearDown();
     }

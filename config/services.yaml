@@ -76,11 +76,16 @@ services:
         exclude:
             - '../src/Api/*/*/Request.php'
             - '../src/Api/*/*/Response.php'
+            - '../src/Api/EventStream/Response.php'
         tags: ['controller.service_arguments']
 
     # Ops controllers (/healthz, /readyz) live outside /api and the firewall.
     App\Ops\:
         resource: '../src/Ops/*/Action.php'
+        tags: ['controller.service_arguments']
+
+    # Showcase playground (GET /) — a plain client of the public API.
+    App\Showcase\PlaygroundAction:
         tags: ['controller.service_arguments']
 
     # Ports -> default adapters.

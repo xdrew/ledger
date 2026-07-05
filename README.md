@@ -74,6 +74,17 @@ task down      # stop and wipe volumes
 `docker compose up -d --build`, `docker compose exec app composer install`,
 `docker compose exec app php bin/console …`, and `docker compose exec app composer test`.
 
+## Try it — the playground
+
+`task up:stack`, then open **http://localhost:8080/**. The playground is a guided, clickable tour
+that drives the real API (with the key you see on the page — it has no backdoor) and shows three
+things side by side after every action: the API exchange, the read models catching up, and the
+append-only **journal** — the event log that is the system's source of truth. The story covers
+accounts, deposits, a completing and a failing transfer, an idempotent replay, a **live
+double-spend race** (two truly concurrent transfers, funds for one — exactly one wins), and
+failure-design edge cases including visible saga compensation. Human-readable API docs live at
+**/api/docs**.
+
 ## Run the full stack locally
 
 `task up:stack` (or `docker compose up -d --build migrate seed api worker prometheus grafana
