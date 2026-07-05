@@ -16,6 +16,7 @@
     --red: #E0442A;
     --amber: #D9A441;
     --mint: #74C69D;
+    --settle: #1F6B4A;
     --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
 }
 * { box-sizing: border-box; margin: 0; }
@@ -68,6 +69,7 @@ header {
 }
 header h1 { font-size: 17px; font-weight: 600; letter-spacing: .04em; }
 header h1 .dim { color: var(--faint); font-weight: 400; }
+header h1 .live { color: var(--mint); font-size: 10px; vertical-align: 2px; }
 header .links { margin-left: auto; display: flex; gap: 14px; font-size: 13.5px; align-items: baseline; }
 header .key { display: flex; gap: 6px; align-items: baseline; }
 header .key input { width: 200px; padding: 3px 6px; font-size: 13.5px; }
@@ -92,6 +94,9 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     font-size: 12.5px;
 }
 .scenarios .divider { margin: 16px 0 8px; }
+.scenarios .step.race button { border-left: 3px solid var(--red); }
+.scenarios .step.race .n { color: var(--red); border-color: var(--red); }
+.scenarios .step.edge button { color: var(--paper-dim); }
 .caption {
     margin-top: 14px;
     padding: 10px;
@@ -101,6 +106,8 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     font-size: 13.5px;
     min-height: 58px;
 }
+.caption.ok { border-left-color: var(--mint); }
+.caption.bad { border-left-color: var(--red); }
 .caption strong { color: var(--paper); }
 .nl { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; }
 .nl button { width: auto; align-self: flex-start; padding: 5px 12px; }
@@ -145,6 +152,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 .models th { color: var(--faint); font-weight: 400; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
 .models td.amt { text-align: right; }
 .models .vsn { color: var(--faint); font-size: 12.5px; }
+.models td.hot { color: var(--amber); }
 .empty { color: var(--faint); font-size: 13.5px; padding: 14px 0; }
 
 /* ---- the journal tape (signature): paper on the dark console ---- */
@@ -185,6 +193,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 }
 .tape .chip.transfer { background: var(--ink); color: var(--paper); }
 .tape .etype { font-weight: 600; }
+.tape .etype.ok { color: var(--settle); }
 .tape .etype.bad { color: var(--red); }
 .tape .etype.warn { color: #8A6A16; }
 .tape .v { color: #9A9078; font-size: 12px; }
@@ -205,7 +214,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 </head>
 <body>
 <header>
-    <h1>ledger-core <span class="dim">· playground — an event-sourced ledger, live</span></h1>
+    <h1>ledger-core <span class="dim">· playground — an event-sourced ledger, <span class="live">●</span> live</span></h1>
     <div class="key">
         <label for="apikey">api key</label>
         <input type="text" id="apikey" spellcheck="false" autocomplete="off">
@@ -228,13 +237,13 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         <div class="step"><span class="n">5</span><button id="s5" disabled>Replay step 3’s exact request</button></div>
 
         <div class="eyebrow divider">concurrency</div>
-        <div class="step"><span class="n">⚡</span><button id="race">Double-spend race: 2 transfers, funds for 1</button></div>
+        <div class="step race"><span class="n">⚡</span><button id="race">Double-spend race: 2 transfers, funds for 1</button></div>
 
         <div class="eyebrow divider">failure design</div>
-        <div class="step"><span class="n">·</span><button id="e1" disabled>Reuse an idempotency key, new payload</button></div>
-        <div class="step"><span class="n">·</span><button id="e2" disabled>Deposit 0.00</button></div>
-        <div class="step"><span class="n">·</span><button id="e3" disabled>Deposit in the wrong currency</button></div>
-        <div class="step"><span class="n">·</span><button id="e4" disabled>Transfer to a nonexistent account</button></div>
+        <div class="step edge"><span class="n">·</span><button id="e1" disabled>Reuse an idempotency key, new payload</button></div>
+        <div class="step edge"><span class="n">·</span><button id="e2" disabled>Deposit 0.00</button></div>
+        <div class="step edge"><span class="n">·</span><button id="e3" disabled>Deposit in the wrong currency</button></div>
+        <div class="step edge"><span class="n">·</span><button id="e4" disabled>Transfer to a nonexistent account</button></div>
 
         <div class="caption" id="caption">Every button below makes real calls to the public API with the key above — the page has no backdoor. Start with step 1.</div>
 
@@ -346,7 +355,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const tb = document.createElement("tbody");
         for (const r of rows) {
             const tr = document.createElement("tr");
-            tr.append(el("td", "", r.name), el("td", "amt", money(r.available, r.currency)), el("td", "amt", money(r.reserved, "")), el("td", "amt", money(r.total, "")), el("td", "vsn", "v" + r.version));
+            tr.append(el("td", "", r.name), el("td", "amt", money(r.available, r.currency)), el("td", "amt" + (r.reserved > 0 ? " hot" : ""), money(r.reserved, "")), el("td", "amt", money(r.total, "")), el("td", "vsn", "v" + r.version));
             tb.append(tr);
         }
         t.append(tb);
@@ -355,7 +364,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
     /* ---------- the journal tape ---------- */
     const seen = new Set();
-    const corrHue = (id) => { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+    const corrHue = (id) => { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 140; return 190 + h; };
     async function refreshTape() {
         const all = [];
         for (const s of state.streams) {
@@ -377,12 +386,12 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             const l1 = el("div", "l1");
             l1.append(el("span", "chip" + (e.streamType === "transfer" ? " transfer" : ""), e.streamType + " · " + e.label));
             const short = e.type.split(".").pop();
-            const tone = /failed/.test(short) ? " bad" : /held|hold/.test(short) ? " warn" : "";
+            const tone = /failed/.test(short) ? " bad" : /held|hold/.test(short) ? " warn" : /completed|credited|deposited/.test(short) ? " ok" : "";
             l1.append(el("span", "etype" + tone, short), el("span", "v", "v" + e.version));
             if (e.correlationId) {
                 const corr = el("span", "corr");
                 const dot = el("span", "dot");
-                dot.style.background = "hsl(" + corrHue(e.correlationId) + " 65% 55%)";
+                dot.style.background = "hsl(" + corrHue(e.correlationId) + " 45% 50%)";
                 corr.append(dot, document.createTextNode(e.correlationId.slice(0, 8)));
                 l1.append(corr);
             }
@@ -399,7 +408,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         await refreshTape();
     }
 
-    const caption = (html) => { $("caption").innerHTML = html; };
+    const caption = (html, tone) => { const c = $("caption"); c.innerHTML = html; c.className = "caption" + (tone ? " " + tone : ""); };
     const enable = (...ids) => ids.forEach(id => { $(id).disabled = false; });
     const track = (kind, id, label) => { if (!state.streams.some(s => s.id === id)) state.streams.push({ kind, id, label }); };
 
@@ -465,7 +474,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const loser = [a, b].find(r => r.json?.status === "failed");
         caption(done === 1
             ? "<strong>Exactly one won.</strong> Two truly concurrent requests raced on the same stream; the UNIQUE(stream, version) constraint let one through. The loser failed with <em>" + (loser?.json?.failureReason ?? "?") + "</em> — either reason is correct: the money moved exactly once. One hold→debit trail in the journal."
-            : "<strong>Invariant check: " + done + " completed.</strong> Expected exactly 1 — inspect the exchange above.");
+            : "<strong>Invariant check: " + done + " completed.</strong> Expected exactly 1 — inspect the exchange above.", done === 1 ? "ok" : "bad");
         await settleAndShow();
     };
 
@@ -499,7 +508,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             ? "<strong>The model translated; SQL answered.</strong> The <em>interpretation</em> echoes the structured filter the question became — the LLM never sees the data, and aggregates are computed by the database."
             : r.status === 501
                 ? "<strong>Feature-flagged, honestly.</strong> NL queries are off (501) rather than silently returning the unfiltered statement. Set LLM_STATEMENT_QUERY_ENABLED=1 and an ANTHROPIC_API_KEY to enable."
-                : "<strong>Translation failed (" + r.status + ").</strong> The endpoint never guesses.");
+                : "<strong>Translation failed (" + r.status + ").</strong> The endpoint never guesses.", r.status >= 502 ? "bad" : undefined);
     };
     $("nlq").addEventListener("keydown", (e) => { if (e.key === "Enter" && !$("nlgo").disabled) $("nlgo").click(); });
 })();
