@@ -531,7 +531,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     // Money travels a marching dashed wire from one place to another. "settle"
     // arrives (node flash + stamp); "refuse" is turned back halfway; "bounce"
     // reaches a place that is not there and comes home (the hold released).
-    async function moveMoney({ from, to, amount, outcome = "settle", reason = "" }) {
+    async function moveMoney({ from, to, amount, outcome = "settle", reason = "", at = 0.52, label }) {
         const map = ensureMap();
         const fromEl = from === "world" ? map.querySelector('.node.world') : nodeFor(from);
         const toEl = to === "ghost" ? ghostNode() : nodeFor(to);
@@ -551,11 +551,15 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         };
         if (noMotion) {
             if (outcome === "settle") { stampAt("\u2713 " + money(amount, ""), "ok", b); flashNode(toEl); }
-            else { wire.classList.add("bad"); stampAt("\u2715 " + (reason || "refused"), "bad", b); }
+            else {
+                wire.classList.add("bad");
+                const p = outcome === "bounce" ? b : { x: a.x + (b.x - a.x) * at, y: a.y + (b.y - a.y) * at };
+                stampAt("\u2715 " + (reason || "refused"), "bad", p);
+            }
             await cleanup(1400);
             return;
         }
-        const coin = el("div", "coin" + (outcome === "bounce" ? " warn" : ""), money(amount, ""));
+        const coin = el("div", "coin" + (outcome === "bounce" ? " warn" : ""), label ?? money(amount, ""));
         map.append(coin);
         const half = { w: coin.offsetWidth / 2, h: coin.offsetHeight / 2 };
         const tf = (p) => `translate(${p.x - half.w}px, ${p.y - half.h}px)`;
@@ -565,8 +569,8 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             stampAt("\u2713 " + money(amount, ""), "ok", b);
             flashNode(toEl);
         } else if (outcome === "refuse") {
-            const mid = { x: a.x + (b.x - a.x) * 0.52, y: a.y + (b.y - a.y) * 0.52 };
-            await glide(coin, [{ transform: tf(a) }, { transform: tf(mid) }], 520);
+            const mid = { x: a.x + (b.x - a.x) * at, y: a.y + (b.y - a.y) * at };
+            await glide(coin, [{ transform: tf(a) }, { transform: tf(mid) }], 380 + 280 * at);
             coin.classList.add("bad");
             wire.classList.add("bad");
             stampAt("\u2715 " + (reason || "refused"), "bad", mid);
@@ -797,11 +801,13 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         caption("<strong>Idempotency is payload-bound.</strong> The same key with a <em>different</em> body is a client bug, not a retry — 422, nothing executed.");
     };
     $("e2").onclick = async () => {
-        await api("POST", "/api/accounts/" + await ensureAccount("alice") + "/deposits", { amount: 0, currency: "USD" }, idem());
+        const r = await api("POST", "/api/accounts/" + await ensureAccount("alice") + "/deposits", { amount: 0, currency: "USD" }, idem());
+        moveMoney({ amount: 0, label: "0.00", from: "world", to: "alice", outcome: "refuse", at: 0.2, reason: (r.json?.errors?.[0]?.message ?? r.json?.detail ?? "rejected").slice(0, 40) });
         caption("<strong>Validated at the boundary.</strong> Amounts are positive integers in minor units — the 422 names the field. The domain never saw this request.");
     };
     $("e3").onclick = async () => {
-        await api("POST", "/api/accounts/" + await ensureAccount("alice") + "/deposits", { amount: 1000, currency: "EUR" }, idem());
+        const r = await api("POST", "/api/accounts/" + await ensureAccount("alice") + "/deposits", { amount: 1000, currency: "EUR" }, idem());
+        moveMoney({ amount: 1000, label: "10.00 EUR", from: "world", to: "alice", outcome: "refuse", at: 0.2, reason: (r.json?.detail ?? "EUR into a USD account").slice(0, 40) });
         caption("<strong>Money refuses mixed currencies.</strong> Accounts are single-currency; the Money value object rejects EUR into a USD account — 422 from the domain invariant.");
     };
     $("e4").onclick = async () => {
