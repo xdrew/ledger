@@ -209,6 +209,39 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 .tape .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.25); }
 .tape .payload { font-size: 12.5px; color: #5A5340; margin-top: 2px; word-break: break-word; }
 
+/* ---- the race stage: two requests, one version slot ---- */
+.stage { display: none; border: 1px solid #24443A; background: var(--ink-2); padding: 12px 14px; margin-bottom: 14px; }
+.stage.on { display: block; }
+.stage .lanes { position: relative; margin: 6px 0 2px; }
+.stage .lane { display: flex; align-items: center; gap: 10px; padding: 11px 0; }
+.stage .reqtag {
+    flex: 0 0 24px; text-align: center;
+    border: 1px solid var(--faint); color: var(--paper-dim);
+    font-size: 11.5px; letter-spacing: .06em;
+}
+.stage .track { position: relative; flex: 1; height: 24px; border-bottom: 1px dashed #2A4A3E; }
+.stage .runner {
+    position: absolute; left: 0; top: 0;
+    background: var(--paper); color: var(--ink); border: 1px solid var(--ink);
+    padding: 0 8px; font-size: 12px; font-weight: 600; white-space: nowrap;
+    will-change: transform;
+}
+.stage .runner.bad { background: #F3D6CE; border-color: var(--red); color: var(--red); }
+.stage .verdict { flex: 0 0 168px; font-size: 12.5px; color: var(--faint); }
+.stage .verdict.ok { color: var(--mint); }
+.stage .verdict.bad { color: var(--red); }
+.stage .gate { position: absolute; top: -4px; bottom: 2px; border-left: 3px double #8FA396; }
+.stage .gate span {
+    position: absolute; left: 7px; top: 50%; transform: translateY(-50%);
+    font-size: 10.5px; line-height: 1.35; color: var(--faint); white-space: nowrap;
+}
+.stage .phase { margin-top: 8px; font-size: 12.5px; color: var(--paper-dim); }
+.stage .phase strong { color: var(--amber); font-weight: 600; }
+.exchange .call .reqtag {
+    flex: 0 0 20px; text-align: center;
+    border: 1px solid var(--faint); color: var(--paper-dim); font-size: 10.5px;
+}
+
 /* ---- money flights: motion is money state (visual only; responses are the truth) ---- */
 #fx { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 #fx .coin {
@@ -284,6 +317,16 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             <div id="balances"><div class="empty">Balances appear once accounts exist. Watch the version tick as projections catch up.</div></div>
         </div>
 
+        <div class="stage" id="stage" aria-label="Concurrency race, frame by frame">
+            <div class="eyebrow">the race, frame by frame</div>
+            <div class="lanes" id="lanes">
+                <div class="lane"><span class="reqtag">A</span><div class="track"><div class="runner" id="runA">50.00</div></div><span class="verdict" id="verA"></span></div>
+                <div class="lane"><span class="reqtag">B</span><div class="track"><div class="runner" id="runB">50.00</div></div><span class="verdict" id="verB"></span></div>
+                <div class="gate" id="gate" aria-hidden="true"><span>UNIQUE(stream, version)<br>— one slot</span></div>
+            </div>
+            <div class="phase" id="racephase"></div>
+        </div>
+
         <div class="eyebrow">api exchange — what the caller sees</div>
         <div id="calls"><div class="empty">No calls yet. Run step 1.</div></div>
     </section>
@@ -319,7 +362,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
     const idem = () => "pg-" + Math.random().toString(36).slice(2, 10);
 
-    async function api(method, path, body, idemKey) {
+    async function api(method, path, body, idemKey, tag) {
         const headers = { "X-Api-Key": keyInput.value };
         if (body !== undefined) headers["Content-Type"] = "application/json";
         if (idemKey) headers["Idempotency-Key"] = idemKey;
@@ -332,13 +375,13 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         } catch (e) {
             json = { error: String(e) };
         }
-        logCall({ method, path, body, status, json, replayed });
+        logCall({ method, path, body, status, json, replayed, tag });
         return { status, json, replayed };
     }
 
     /* ---------- exchange panel ---------- */
     const calls = $("calls");
-    function logCall({ method, path, body, status, json, replayed }) {
+    function logCall({ method, path, body, status, json, replayed, tag }) {
         if (calls.firstElementChild?.classList.contains("empty")) calls.innerHTML = "";
         const d = document.createElement("details");
         d.className = "call";
@@ -346,6 +389,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const summary = document.createElement("summary");
         const sClass = status >= 500 ? "s5" : status >= 400 ? "s4" : "s2";
         summary.innerHTML = "";
+        if (tag) summary.append(el("span", "reqtag", tag));
         const m = el("span", "method", method);
         const p = el("span", "path", path);
         const s = el("span", "status " + sClass, String(status));
@@ -368,9 +412,11 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
     /* ---------- read models ---------- */
     const money = (minor, cur) => (minor / 100).toFixed(2) + (cur ? " " + cur : "");
+    // Renders the balances and reports convergence: whether every known account
+    // answered (projections caught up) and a snapshot key for change detection.
     async function refreshBalances() {
         const names = Object.keys(state.accounts);
-        if (!names.length) return;
+        if (!names.length) return { allProjected: true, key: "" };
         const rows = [];
         for (const name of names) {
             const res = await fetch("/api/accounts/" + state.accounts[name], { headers: { "X-Api-Key": keyInput.value } });
@@ -386,6 +432,11 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         }
         t.append(tb);
         $("balances").replaceChildren(t);
+
+        return {
+            allProjected: rows.length === names.length,
+            key: rows.map(r => r.name + ":" + r.available + ":" + r.reserved + ":" + r.version).join("|"),
+        };
     }
 
     /* ---------- the journal tape ---------- */
@@ -505,18 +556,27 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
     let settling = 0;
     async function settleAndShow() {
-        // Let the worker's projection loop catch up — eventual consistency, visibly.
+        // Refresh until the projections have genuinely converged: every known
+        // account answers, and two consecutive snapshots agree. The chip only
+        // says "settled" when that is true — never over a stale panel.
         const sync = $("sync");
         settling++;
         sync.textContent = "\u25CF projections syncing\u2026";
         sync.className = "sync on";
+        let converged = false;
         try {
-            for (let i = 0; i < 4; i++) { await new Promise(r => setTimeout(r, 350)); await refreshBalances(); }
-            await refreshTape();
+            let previous = null;
+            for (let i = 0; i < 14; i++) {
+                await new Promise(r => setTimeout(r, 350));
+                const snap = await refreshBalances();
+                await refreshTape();
+                if (snap.allProjected && previous === snap.key) { converged = true; break; }
+                previous = snap.key;
+            }
         } finally {
             if (--settling === 0) {
-                sync.textContent = "\u2713 settled";
-                sync.className = "sync ok"; // fades out after a beat
+                sync.textContent = converged ? "\u2713 settled" : "\u25CF still catching up \u2014 any action refreshes";
+                sync.className = converged ? "sync ok" : "sync on";
             }
         }
     }
@@ -575,32 +635,98 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         await settleAndShow();
     };
 
+    /* ---------- the race stage ---------- */
+    const racePhase = (html) => { $("racephase").innerHTML = html; };
+    function resetStage() {
+        $("stage").classList.add("on");
+        for (const id of ["runA", "runB"]) {
+            const r = $(id);
+            r.className = "runner";
+            r.getAnimations().forEach(a => a.cancel());
+            r.style.transform = "translateX(0)";
+        }
+        for (const id of ["verA", "verB"]) { const v = $(id); v.className = "verdict"; v.textContent = ""; }
+        // Place the gate at ~66% of the track, measured against the live layout.
+        const track = $("runA").parentElement;
+        const lanes = $("lanes");
+        $("gate").style.left = (track.offsetLeft - lanes.offsetLeft + track.offsetWidth * 0.66) + "px";
+        racePhase("");
+    }
+    // Both runners approach the gate in the same instant; the responses decide
+    // who passes. Reduced motion: final frame only.
+    async function runRace(results) {
+        const track = $("runA").parentElement;
+        const gateX = track.offsetWidth * 0.66;
+        const lanes = [
+            { run: $("runA"), ver: $("verA"), r: results[0] },
+            { run: $("runB"), ver: $("verB"), r: results[1] },
+        ];
+        const endX = (run) => track.offsetWidth - run.offsetWidth - 2;
+        const gatePos = (run) => gateX - run.offsetWidth - 6;
+        const verdictOf = ({ r, ver }) => {
+            const won = r.json?.status === "completed";
+            ver.textContent = won ? "\u2713 completed" : "\u2715 " + (r.json?.failureReason ?? "failed");
+            ver.className = "verdict " + (won ? "ok" : "bad");
+            return won;
+        };
+        if (noMotion) {
+            for (const lane of lanes) {
+                const won = verdictOf(lane);
+                if (!won) lane.run.classList.add("bad");
+                lane.run.style.transform = `translateX(${won ? endX(lane.run) : gatePos(lane.run)}px)`;
+            }
+            return;
+        }
+        // Frame 1: simultaneous launch toward the gate.
+        await Promise.all(lanes.map(({ run }) =>
+            run.animate(
+                [{ transform: "translateX(0)" }, { transform: `translateX(${gatePos(run)}px)` }],
+                { duration: 900, easing: "cubic-bezier(.45,0,.55,1)", fill: "forwards" },
+            ).finished));
+        racePhase("both are at the gate — the append wants version 3 of the racer stream, and only one row can have it");
+        await new Promise(r => setTimeout(r, 650));
+        // Frame 2: the responses decide.
+        await Promise.all(lanes.map(async (lane) => {
+            const won = verdictOf(lane);
+            if (won) {
+                await lane.run.animate(
+                    [{ transform: `translateX(${gatePos(lane.run)}px)` }, { transform: `translateX(${endX(lane.run)}px)` }],
+                    { duration: 450, easing: "cubic-bezier(.3,0,.4,1)", fill: "forwards" },
+                ).finished;
+            } else {
+                lane.run.classList.add("bad");
+                await lane.run.animate(
+                    [{ transform: `translateX(${gatePos(lane.run)}px)` }, { transform: `translateX(${gatePos(lane.run) - 26}px)` }],
+                    { duration: 380, easing: "cubic-bezier(.2,.8,.4,1)", fill: "forwards" },
+                ).finished;
+            }
+        }));
+    }
+
     /* ---------- the race ---------- */
     $("race").onclick = async () => {
-        caption("Setting up: a fresh account funded for exactly one transfer…");
+        resetStage();
+        caption("<strong>The double-spend attempt, live.</strong> Watch the stage: requests A and B carry the same 50.00 from the same account — funds for exactly one of them.");
+        racePhase("<strong>1</strong> · opening a fresh account and funding it with exactly 50.00…");
         const src = await openAccount("racer");
         const dst = state.accounts.alice ?? await openAccount("alice");
         await api("POST", "/api/accounts/" + src + "/deposits", { amount: 5000, currency: "USD" }, idem());
-        await refreshBalances(); // so the racer row exists as a launch pad
+        await refreshBalances(); // so the racer row is visible below
+        racePhase("<strong>2</strong> · requests A and B fired in the same instant — two RoadRunner workers, one event stream");
         const [a, b] = await Promise.all([
-            api("POST", "/api/transfers", transferBody(src, dst, 5000), idem()),
-            api("POST", "/api/transfers", transferBody(src, dst, 5000), idem()),
+            api("POST", "/api/transfers", transferBody(src, dst, 5000), idem(), "A"),
+            api("POST", "/api/transfers", transferBody(src, dst, 5000), idem(), "B"),
         ]);
         for (const r of [a, b]) if (r.json?.transferId) track("transfers", r.json.transferId, "race");
         const done = [a, b].filter(r => r.json?.status === "completed").length;
         const loser = [a, b].find(r => r.json?.status === "failed");
-        [a, b].forEach((r, i) => fly({
-            amount: 5000,
-            from: rowFor("racer") ?? $("race"),
-            to: rowFor("alice"),
-            destName: "alice",
-            delay: i * 140,
-            outcome: r.json?.status === "completed" ? "settle" : "refuse",
-            reason: r.json?.failureReason ?? "lost the race",
-        }));
+        await runRace([a, b]);
+        racePhase(done === 1
+            ? "<strong>3</strong> · the guard admitted exactly one — the money moved once. The loser\u2019s <em>" + (loser?.json?.failureReason ?? "?") + "</em> is the losing side of the same race: refused before the hold, or beaten to the version slot mid-flight."
+            : "<strong>3</strong> · invariant check: " + done + " completed — expected exactly 1, inspect the exchange (A and B) below.");
         caption(done === 1
-            ? "<strong>Exactly one won.</strong> Two truly concurrent requests raced on the same stream; the UNIQUE(stream, version) constraint let one through. The loser failed with <em>" + (loser?.json?.failureReason ?? "?") + "</em> — either reason is correct: the money moved exactly once. One hold→debit trail in the journal."
-            : "<strong>Invariant check: " + done + " completed.</strong> Expected exactly 1 — inspect the exchange above.", done === 1 ? "ok" : "bad");
+            ? "<strong>Exactly one won.</strong> The exchange shows A and B; the journal below shows one hold\u2192debit trail and the loser\u2019s failure event. Rerun it — the winner may swap, the invariant never does."
+            : "<strong>Invariant check: " + done + " completed.</strong> Expected exactly 1 — inspect A and B in the exchange.", done === 1 ? "ok" : "bad");
         await settleAndShow();
     };
 
