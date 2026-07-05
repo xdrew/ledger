@@ -71,6 +71,43 @@ final class EventStreamTest extends ApiTestCase
     }
 
     #[Test]
+    public function aTransferToAnUnknownDestinationCompensatesVisibly(): void
+    {
+        $source = $this->openAccount('USD');
+        $this->post(\sprintf('/api/accounts/%s/deposits', $source), ['amount' => 5_000, 'currency' => 'USD']);
+
+        $this->post('/api/transfers', [
+            'sourceAccountId' => $source,
+            'destinationAccountId' => Uuid::uuid7()->toString(),
+            'amount' => 1_000,
+            'currency' => 'USD',
+        ]);
+
+        self::assertSame(201, $this->statusCode());
+        $body = $this->json();
+        self::assertSame('failed', $body['status'] ?? null);
+        self::assertSame('unknown_account', $body['failureReason'] ?? null);
+
+        // The compensation is on the record: hold placed, then released.
+        $this->get(\sprintf('/api/accounts/%s/events', $source));
+        $events = $this->json()['events'] ?? null;
+        self::assertIsArray($events);
+        $types = array_map(static fn(mixed $e): mixed => \is_array($e) ? ($e['type'] ?? null) : null, $events);
+        self::assertSame([
+            'accounts.account_opened',
+            'accounts.funds_deposited',
+            'accounts.funds_held',
+            'accounts.hold_released',
+        ], $types);
+
+        // And the money never left.
+        $this->catchUpProjections();
+        $this->get(\sprintf('/api/accounts/%s', $source));
+        self::assertSame(5_000, $this->json()['available'] ?? null);
+        self::assertSame(0, $this->json()['reserved'] ?? null);
+    }
+
+    #[Test]
     public function unknownStreamsAre404ProblemJson(): void
     {
         $this->get(\sprintf('/api/accounts/%s/events', Uuid::uuid7()->toString()));

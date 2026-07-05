@@ -7,6 +7,7 @@ namespace App\Tests\Unit\Ledger;
 use App\Ledger\Domain\AccountRef;
 use App\Ledger\Domain\AccountStatusReader;
 use App\Ledger\Domain\Exception\ClosedAccountPosting;
+use App\Ledger\Domain\Exception\UnknownAccountPosting;
 use App\Ledger\Domain\JournalEntryId;
 use App\Ledger\Domain\JournalPostingService;
 use App\Ledger\Domain\Leg;
@@ -46,6 +47,26 @@ final class JournalPostingServiceTest extends TestCase
             JournalEntryId::generate(),
             Leg::debit(AccountRef::fromString('closed'), $this->usd(100)),
             Leg::credit(AccountRef::fromString('b'), $this->usd(100)),
+        );
+    }
+
+    #[Test]
+    public function rejectsPostingThatReferencesAnUnknownAccount(): void
+    {
+        $reader = new class implements AccountStatusReader {
+            public function assertPostable(AccountRef $account): void
+            {
+                if ($account->value === 'ghost') {
+                    throw UnknownAccountPosting::forAccount($account);
+                }
+            }
+        };
+
+        $this->expectException(UnknownAccountPosting::class);
+        (new JournalPostingService($reader))->post(
+            JournalEntryId::generate(),
+            Leg::debit(AccountRef::fromString('a'), $this->usd(100)),
+            Leg::credit(AccountRef::fromString('ghost'), $this->usd(100)),
         );
     }
 

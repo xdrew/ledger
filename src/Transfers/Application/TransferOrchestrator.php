@@ -10,6 +10,7 @@ use App\Accounts\Domain\Exception\InsufficientFunds;
 use App\EventStore\ConcurrencyConflict;
 use App\Ledger\Domain\AccountRef;
 use App\Ledger\Domain\Exception\ClosedAccountPosting;
+use App\Ledger\Domain\Exception\UnknownAccountPosting;
 use App\Ledger\Domain\JournalEntryId;
 use App\Ledger\Domain\JournalPostingService;
 use App\Ledger\Domain\LedgerRepository;
@@ -31,6 +32,8 @@ use App\Transfers\Domain\TransferRepository;
  */
 final class TransferOrchestrator
 {
+    private const SETTLE_ATTEMPTS = 3;
+
     public function __construct(
         private readonly TransferRepository $transfers,
         private readonly AccountRepository $accounts,
@@ -105,20 +108,32 @@ final class TransferOrchestrator
         $transfer->markPosted($journalEntry->id()->toString());
         $this->transfers->save($transfer);
 
-        // Step 3: settle balances.
+        // Step 3: settle balances. Business preconditions (existence, status,
+        // funds) were all enforced by the hold and the posting, so the only
+        // expected failure here is a transient concurrency race — retried with a
+        // fresh aggregate load. Until the debit applies, the hold is intact and
+        // releasing it is the correct compensation. Once the debit has applied
+        // the hold no longer exists, so a residual credit failure must NOT
+        // "compensate": it propagates, leaving the transfer loudly `posted`
+        // (the runbook's stuck-saga play) instead of recording a false `failed`
+        // while the source money already moved.
         try {
-            $source = $this->accounts->load($sourceId);
-            $source->debit($amount);
-            $this->accounts->save($source);
-
-            $destination = $this->accounts->load($destinationId);
-            $destination->credit($amount);
-            $this->accounts->save($destination);
+            $this->settleWithRetry(function () use ($sourceId, $amount): void {
+                $source = $this->accounts->load($sourceId);
+                $source->debit($amount);
+                $this->accounts->save($source);
+            });
         } catch (\Throwable $error) {
             $this->releaseHold($sourceId, $amount);
 
             return $this->fail($transfer, $this->reasonFor($error));
         }
+
+        $this->settleWithRetry(function () use ($destinationId, $amount): void {
+            $destination = $this->accounts->load($destinationId);
+            $destination->credit($amount);
+            $this->accounts->save($destination);
+        });
 
         $transfer->complete();
         $this->transfers->save($transfer);
@@ -151,9 +166,31 @@ final class TransferOrchestrator
         }
     }
 
+    /**
+     * Runs one settlement operation, retrying transient concurrency races with a
+     * fresh aggregate load. Settlement ops are pure appends (debit against an
+     * existing hold, credit), so a conflict only means "someone else appended
+     * first" — reload and reapply.
+     */
+    private function settleWithRetry(callable $operation): void
+    {
+        for ($attempt = 1;; ++$attempt) {
+            try {
+                $operation();
+
+                return;
+            } catch (ConcurrencyConflict $conflict) {
+                if ($attempt >= self::SETTLE_ATTEMPTS) {
+                    throw $conflict;
+                }
+            }
+        }
+    }
+
     private function reasonFor(\Throwable $error): FailureReason
     {
         return match (true) {
+            $error instanceof UnknownAccountPosting => FailureReason::UnknownAccount,
             $error instanceof ClosedAccountPosting => FailureReason::ClosedAccount,
             $error instanceof ConcurrencyConflict => FailureReason::Conflict,
             default => FailureReason::Other,

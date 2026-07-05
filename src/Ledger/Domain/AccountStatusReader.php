@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Ledger\Domain;
 
 use App\Ledger\Domain\Exception\ClosedAccountPosting;
+use App\Ledger\Domain\Exception\UnknownAccountPosting;
 
 /**
  * Port for checking whether an account may be posted against. Implemented by an
@@ -13,7 +14,8 @@ use App\Ledger\Domain\Exception\ClosedAccountPosting;
 interface AccountStatusReader
 {
     /**
-     * @throws ClosedAccountPosting if the referenced account is closed
+     * @throws ClosedAccountPosting  if the referenced account is closed
+     * @throws UnknownAccountPosting if the referenced account does not exist
      */
     public function assertPostable(AccountRef $account): void;
 }

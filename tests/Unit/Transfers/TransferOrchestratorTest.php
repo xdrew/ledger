@@ -160,6 +160,79 @@ final class TransferOrchestratorTest extends TestCase
     }
 
     #[Test]
+    public function aTransferToAnUnknownDestinationFailsAndReleasesTheHold(): void
+    {
+        $env = TransferTestEnvironment::inMemory();
+        $source = $env->openAccount(10_000);
+        $ghost = AccountId::generate(); // never opened
+
+        $transfer = $env->orchestrator->initiate(new InitiateTransfer(TransferId::generate(), $source, $ghost, $this->usd(1_000)));
+
+        self::assertSame(TransferStatus::Failed, $transfer->status());
+        self::assertSame(FailureReason::UnknownAccount, $transfer->failureReason());
+        // The posting refused before any journal entry or settlement: the hold
+        // was released and no money left the source (the showcase demo caught a
+        // version of this that debited the source with no one credited).
+        self::assertNull($transfer->journalEntryId());
+        self::assertTrue($env->accounts->load($source)->availableBalance()->equals($this->usd(10_000)));
+        self::assertTrue($env->accounts->load($source)->reservedBalance()->equals($this->usd(0)));
+    }
+
+    #[Test]
+    public function aTransientConflictDuringSettlementIsRetriedAndTheTransferCompletes(): void
+    {
+        $store = new InMemoryEventStore(new FixedClock(new \DateTimeImmutable('2026-01-01T00:00:00+00:00')), TransferTestEnvironment::registry());
+        $realAccounts = new EventSourcedAccountRepository($store);
+
+        $sourceId = AccountId::generate();
+        $source = Account::open($sourceId, Currency::of('USD'));
+        $source->deposit($this->usd(10_000));
+        $realAccounts->save($source);
+        $destinationId = AccountId::generate();
+        $realAccounts->save(Account::open($destinationId, Currency::of('USD')));
+
+        // The destination credit loses one concurrency race, then succeeds on
+        // the retry's fresh load — the saga must complete, not lose the money.
+        $flaky = new class ($realAccounts, $destinationId) implements AccountRepository {
+            private bool $thrown = false;
+
+            public function __construct(
+                private readonly EventSourcedAccountRepository $inner,
+                private readonly AccountId $destination,
+            ) {}
+
+            public function load(AccountId $id): Account
+            {
+                return $this->inner->load($id);
+            }
+
+            public function save(Account $account, ?EventMetadata $metadata = null): void
+            {
+                if (!$this->thrown && $account->id()->toString() === $this->destination->toString() && $account->availableBalance()->minorUnits > 0) {
+                    $this->thrown = true;
+
+                    throw ConcurrencyConflict::forStream(StreamId::of('account', $account->id()->toString()), 1, 2);
+                }
+                $this->inner->save($account, $metadata);
+            }
+        };
+
+        $orchestrator = new TransferOrchestrator(
+            new EventSourcedTransferRepository($store),
+            $flaky,
+            new EventSourcedLedgerRepository($store),
+            new JournalPostingService(new AccountRepositoryStatusReader($realAccounts)),
+            new NullMetrics(),
+        );
+
+        $transfer = $orchestrator->initiate(new InitiateTransfer(TransferId::generate(), $sourceId, $destinationId, $this->usd(10_000)));
+
+        self::assertSame(TransferStatus::Completed, $transfer->status());
+        self::assertTrue($realAccounts->load($destinationId)->availableBalance()->equals($this->usd(10_000)));
+        self::assertTrue($realAccounts->load($sourceId)->totalBalance()->equals($this->usd(0)));
+    }
+
+    #[Test]
     public function twoTransfersFromOneSourceWithFundsForOneSettleExactlyOnce(): void
     {
         $env = TransferTestEnvironment::inMemory();
