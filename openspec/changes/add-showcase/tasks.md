@@ -11,6 +11,8 @@
 
 - [ ] 2.1 `App\Showcase\PlaygroundAction` (`GET /`, public route outside `/api`) serving the self-contained `playground.html` (vanilla JS, inline CSS, no CDN).
 - [ ] 2.2 Guided story: open Alice+Bob → deposit → transfer (completed) → transfer (insufficient funds → `failed`) → idempotent replay (same key, `Idempotent-Replayed` header shown) — each step updates the panels + a one-line architectural caption.
+- [ ] 2.2a Double-spend race: fund a fresh account for exactly one transfer, fire two concurrent transfers (`Promise.all`); display both responses and assert the invariant (exactly one `completed`; loser `failed` with `insufficient_funds` or `conflict`); source stream shows a single hold→debit trail.
+- [ ] 2.2b Edge cases (one click each, real API responses rendered): idempotency-key reuse with different payload → `422`; zero-amount deposit → `422` field errors; wrong-currency deposit → `422`; transfer to nonexistent destination → `failed` + compensation visible (`FundsHeld` → `HoldReleased` in the source stream, balance intact).
 - [ ] 2.3 Panels: API exchange (request/response incl. problem+json), read models (balances with projection `version`, statement), event log per touched stream (via the new endpoints).
 - [ ] 2.4 Free exploration: custom amounts, NL statement-query box (`?q=`), API-key field (prefilled local-dev default, localStorage).
 - [ ] 2.5 Links out: Grafana, Prometheus, `/api/docs`.

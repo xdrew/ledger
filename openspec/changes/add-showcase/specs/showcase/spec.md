@@ -30,6 +30,35 @@ transfer saga's state trail and correlation ids) are visible together.
 - **WHEN** the guided transfer completes
 - **THEN** the transfer stream panel shows the Initiated, Held, Posted, and Completed events with their correlation ids
 
+### Requirement: The double-spend race is demonstrable live
+
+The playground SHALL include a concurrency scenario that funds an account for exactly one transfer
+and issues two transfer requests concurrently, displaying both real responses and verifying the
+invariant: exactly one transfer completes, the other fails (insufficient funds or conflict), and the
+source stream records a single hold-and-debit trail — the money moves exactly once.
+
+#### Scenario: Two racing transfers, one winner
+
+- **WHEN** the double-spend scenario fires two concurrent transfers against funds sufficient for one
+- **THEN** the page shows exactly one `completed` and one `failed` response, and the source account's event stream shows one hold and one debit
+
+### Requirement: Failure design is demonstrable per edge case
+
+The playground SHALL offer one-click edge-case scenarios rendering the API's real failure
+responses: idempotency-key reuse with a different payload, invalid amounts, currency mismatch, and
+a transfer to a nonexistent destination — the last showing saga compensation (hold placed, then
+released, balance unchanged) in the event stream.
+
+#### Scenario: Compensation is visible
+
+- **WHEN** the nonexistent-destination scenario runs
+- **THEN** the transfer is reported `failed` and the source stream shows the hold followed by its release, with the balance panel unchanged
+
+#### Scenario: Idempotency is payload-bound
+
+- **WHEN** the key-reuse scenario sends a different payload under a used idempotency key
+- **THEN** the page shows the API's `422` problem+json response
+
 ### Requirement: Human-readable API documentation page
 
 The system SHALL serve a public documentation page rendering the live generated OpenAPI document,

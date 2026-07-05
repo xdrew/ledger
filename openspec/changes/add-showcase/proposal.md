@@ -21,6 +21,17 @@ for a showcase.
   - **Act:** buttons for the guided story — open two accounts, deposit, transfer (success), transfer
     that fails on insufficient funds, replay a request with the same idempotency key — plus a free
     NL statement-query box (`?q=`).
+  - **Race (the brief's centerpiece, live):** a "double-spend" button funds an account for exactly
+    one transfer and fires **two concurrent transfers** from it (`Promise.all` → two RoadRunner
+    workers → a real race against the UNIQUE stream-version guard). The panels show both responses
+    side by side — exactly one `completed`, the other `failed` (`insufficient_funds` or `conflict`,
+    depending on who lost where) — and the source stream's single hold→debit trail. The caption
+    explains that both loser outcomes are correct: the money moved exactly once.
+  - **Edge cases chapter** — each a one-click scenario with its real API failure rendered:
+    idempotency-key reuse with a different payload (`422`), zero-amount deposit (`422` with field
+    errors), wrong-currency deposit (`422` CurrencyMismatch), and a transfer to a nonexistent
+    destination — which demonstrates **saga compensation**: the response is `failed`, and the source
+    stream visibly shows `FundsHeld` followed by `HoldReleased` with the balance intact.
   - **See:** after every action, three synchronized panels update: the **API exchange** (request →
     response, including problem+json errors and the `Idempotent-Replayed` header), the **read
     models** (balances with projection `version`, statement), and the **event log** for the touched

@@ -56,6 +56,26 @@ off-script. The page polls `projections:status`-equivalent state implicitly by r
 balances/statement after each action — eventual consistency becomes *visible* (the projection
 `version` ticks) rather than explained.
 
+### D4a: The race is real, not simulated
+The double-spend scenario funds a fresh account for exactly one transfer, then issues two transfer
+requests **concurrently** from the browser (`Promise.all`). The dev RoadRunner pool runs ≥2 workers,
+so the requests genuinely race inside the saga: both try to hold the same funds; the stream-version
+UNIQUE constraint serializes them. Outcomes are non-deterministic in *reason* but deterministic in
+*invariant* — exactly one `completed`; the loser is `failed` with `insufficient_funds` (lost before
+the hold) or `conflict` (lost the version race mid-flight). The page asserts and displays the
+invariant (one winner, money moved once — the source stream shows a single hold→debit trail) rather
+than a fixed script, and the caption explains why both loser shapes are correct. If both requests
+happen to serialize cleanly (no overlap), the second simply fails on insufficient funds — the demo
+degrades gracefully to the same invariant.
+
+### D4b: Edge cases demonstrate failure *design*, not just failures
+Each one-click edge case exists to show a deliberate architectural decision through its real API
+response: key-reuse-with-different-payload → `422` (idempotency is payload-bound, not just
+key-bound); zero amount / wrong currency → `422` with the validation contract; transfer to a
+nonexistent destination → the saga's **compensation** made visible — `failed` response while the
+source stream shows `FundsHeld` then `HoldReleased` and the balance panel proves no money left the
+account. All of these use existing endpoints; no demo-only API surface is added.
+
 ### D5: Docs page = Redoc shell over the live spec
 `GET /api/docs` (public, `#[OpenApiPublic]`) returns a ~15-line HTML shell loading Redoc from CDN
 and pointing it at `/api/openapi.json`. Travel-project convention; zero maintenance because the
