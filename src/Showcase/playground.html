@@ -44,6 +44,9 @@ button {
 button:hover:not(:disabled) { background: #234437; }
 button:disabled { opacity: .45; cursor: default; }
 button.done::after { content: "\2713"; color: var(--mint); float: right; }
+button.busy::after { content: "\258C"; color: var(--amber); float: right; animation: blink 1s steps(2, start) infinite; }
+@media (prefers-reduced-motion: reduce) { button.busy::after { animation: none; } }
+@keyframes blink { 50% { opacity: 0; } }
 .scenarios .step.done .n { color: var(--mint); border-color: #2E5A48; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--paper); outline-offset: 1px; }
 input[type=text] {
@@ -149,6 +152,9 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     margin-bottom: 12px;
     border-bottom: 1px solid #24443A;
 }
+.sync { margin-left: 10px; text-transform: none; letter-spacing: .02em; }
+.sync.on { color: var(--amber); }
+.sync.ok { color: var(--mint); opacity: 0; transition: opacity .6s ease 1.4s; }
 .models table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .models th, .models td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #24443A; }
 .models th { color: var(--faint); font-weight: 400; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
@@ -274,7 +280,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
     <section class="col exchange" aria-label="API exchange and read models">
         <div class="models">
-            <div class="eyebrow">read models — projections (eventually consistent)</div>
+            <div class="eyebrow">read models — projections (eventually consistent)<span id="sync" class="sync"></span></div>
             <div id="balances"><div class="empty">Balances appear once accounts exist. Watch the version tick as projections catch up.</div></div>
         </div>
 
@@ -497,10 +503,22 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         await fadeOut(coin);
     }
 
+    let settling = 0;
     async function settleAndShow() {
         // Let the worker's projection loop catch up — eventual consistency, visibly.
-        for (let i = 0; i < 4; i++) { await new Promise(r => setTimeout(r, 350)); await refreshBalances(); }
-        await refreshTape();
+        const sync = $("sync");
+        settling++;
+        sync.textContent = "\u25CF projections syncing\u2026";
+        sync.className = "sync on";
+        try {
+            for (let i = 0; i < 4; i++) { await new Promise(r => setTimeout(r, 350)); await refreshBalances(); }
+            await refreshTape();
+        } finally {
+            if (--settling === 0) {
+                sync.textContent = "\u2713 settled";
+                sync.className = "sync ok"; // fades out after a beat
+            }
+        }
     }
 
     const caption = (html, tone) => { const c = $("caption"); c.innerHTML = html; c.className = "caption" + (tone ? " " + tone : ""); };
@@ -619,14 +637,20 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
                 ? "<strong>Feature-flagged, honestly.</strong> NL queries are off (501) rather than silently returning the unfiltered statement. Set LLM_STATEMENT_QUERY_ENABLED=1 and an ANTHROPIC_API_KEY to enable."
                 : "<strong>Translation failed (" + r.status + ").</strong> The endpoint never guesses.", r.status >= 502 ? "bad" : undefined);
     };
-    // A check marks every scenario that has already run (buttons stay re-runnable).
-    for (const id of ["s1", "s2", "s3", "s4", "s5", "race", "e1", "e2", "e3", "e4"]) {
+    // Button lifecycle: an amber cursor blinks from the click until the panels
+    // have settled, then a check marks the scenario as run (still re-runnable).
+    for (const id of ["s1", "s2", "s3", "s4", "s5", "race", "e1", "e2", "e3", "e4", "nlgo"]) {
         const btn = $(id);
         const original = btn.onclick;
         btn.onclick = async () => {
-            await original();
-            btn.classList.add("done");
-            btn.closest(".step").classList.add("done");
+            btn.classList.add("busy");
+            try {
+                await original();
+                btn.classList.add("done");
+                btn.closest(".step")?.classList.add("done");
+            } finally {
+                btn.classList.remove("busy");
+            }
         };
     }
 
