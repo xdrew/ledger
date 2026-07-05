@@ -221,7 +221,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 }
 
 /* ---- the money map: accounts are places; money travels visible wires ---- */
-.map { position: relative; height: 172px; border: 1px solid #24443A; background: var(--ink-2); overflow: hidden; }
+.map { position: relative; height: 188px; border: 1px solid #24443A; background: var(--ink-2); overflow: hidden; }
 .map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .map line.flow { stroke: #8FA396; stroke-width: 1.5; stroke-dasharray: 7 5; animation: march .45s linear infinite; }
 .map line.flow.bad { stroke: var(--red); }
@@ -393,7 +393,9 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     /* ---------- read models ---------- */
     const money = (minor, cur) => (minor / 100).toFixed(2) + (cur ? " " + cur : "");
     /* ---------- the money map: accounts are places, money travels wires ---------- */
-    const SLOTS = [{ x: 38, y: 27 }, { x: 82, y: 27 }, { x: 58, y: 76 }];
+    // Fixed geography: every actor has a home, whatever order they appear in.
+    const PLACES = { alice: { x: 38, y: 26 }, bob: { x: 82, y: 26 }, racer: { x: 82, y: 78 } };
+    const SPARE_SLOTS = [{ x: 58, y: 78 }, { x: 20, y: 26 }, { x: 58, y: 26 }];
     const slotByName = {};
     function ensureMap() {
         let map = document.getElementById("map");
@@ -417,7 +419,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const map = ensureMap();
         let node = map.querySelector('.node[data-name="' + name + '"]');
         if (node) return node;
-        const slot = slotByName[name] ??= SLOTS[Object.keys(slotByName).length % SLOTS.length];
+        const slot = slotByName[name] ??= PLACES[name] ?? SPARE_SLOTS[Object.keys(slotByName).filter(n => !PLACES[n]).length % SPARE_SLOTS.length];
         node = el("div", "node");
         node.dataset.name = name;
         node.append(el("div", "nm", name), el("div", "bal", "\u2026"), el("div", "sub", "awaiting projection"));
@@ -520,8 +522,8 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         if (!g) {
             g = el("div", "node ghost");
             g.append(el("div", "nm", "account ?"));
-            g.style.left = "88%";
-            g.style.top = "76%";
+            g.style.left = "16%";
+            g.style.top = "78%";
             map.append(g);
         }
         return g;
