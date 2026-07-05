@@ -203,6 +203,22 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 .tape .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.25); }
 .tape .payload { font-size: 12.5px; color: #5A5340; margin-top: 2px; word-break: break-word; }
 
+/* ---- money flights: motion is money state (visual only; responses are the truth) ---- */
+#fx { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+#fx .coin {
+    position: absolute; left: 0; top: 0;
+    background: var(--paper); color: var(--ink); border: 1px solid var(--ink);
+    padding: 1px 8px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+    will-change: transform, opacity;
+}
+#fx .coin.bad { background: #F3D6CE; border-color: var(--red); color: var(--red); }
+#fx .coin.warn { background: #F3E2B9; border-color: #8A6A16; color: #8A6A16; }
+#fx .stamp { position: absolute; left: 0; top: 0; font-size: 11.5px; letter-spacing: .06em; white-space: nowrap; will-change: transform, opacity; }
+#fx .stamp.ok { color: var(--mint); }
+#fx .stamp.bad { color: var(--red); }
+#fx .stamp.warn { color: var(--amber); }
+#fx .ghost { position: absolute; left: 0; top: 0; border: 1px dashed var(--faint); color: var(--faint); padding: 1px 8px; font-size: 12.5px; }
+
 @media (max-width: 1100px) {
     .layout { grid-template-columns: 230px 1fr; height: auto; }
     .tape-col { grid-column: 1 / -1; border-left: none; border-top: 1px solid #24443A; max-height: 60vh; }
@@ -276,6 +292,8 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         </div>
     </section>
 </div>
+
+<div id="fx" aria-hidden="true"></div>
 
 <script>
 "use strict";
@@ -404,6 +422,81 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         tape.lastElementChild?.scrollIntoView({ block: "nearest" });
     }
 
+    /* ---------- money flights (visual only; the API responses are the truth) ---------- */
+    const fx = $("fx");
+    const noMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const rowFor = (name) => {
+        for (const tr of document.querySelectorAll("#balances tbody tr")) {
+            if (tr.firstChild?.textContent === name) return tr;
+        }
+        return null;
+    };
+    const midOf = (elm) => {
+        const r = (elm ?? $("balances")).getBoundingClientRect();
+        return { x: r.left + Math.min(r.width * 0.4, 240), y: r.top + r.height / 2 };
+    };
+    function stamp(text, cls, x, y) {
+        const n = el("div", "stamp " + cls, text);
+        fx.append(n);
+        n.animate(
+            [{ opacity: 1, transform: `translate(${x}px, ${y}px)` }, { opacity: 0, transform: `translate(${x}px, ${y - 26}px)` }],
+            { duration: 1100, easing: "ease-out", fill: "forwards" },
+        ).finished.then(() => n.remove());
+    }
+    const flashRow = (name, rgba) =>
+        rowFor(name)?.animate([{ backgroundColor: rgba }, { backgroundColor: "transparent" }], { duration: 1300, easing: "ease-out" });
+    const glide = (coin, frames, ms, delay = 0) =>
+        coin.animate(frames, { duration: ms, delay, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" }).finished;
+    async function fadeOut(n) {
+        await n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: "forwards" }).finished;
+        n.remove();
+    }
+    // A coin flies source -> destination. "settle" lands with a green flash;
+    // "refuse" is turned back at the boundary, stamped with the reason.
+    async function fly({ amount, from, to, destName, outcome = "settle", reason = "", delay = 0 }) {
+        if (noMotion) return;
+        const a = midOf(from), b = midOf(to);
+        const coin = el("div", "coin", money(amount, ""));
+        fx.append(coin);
+        const half = { w: coin.offsetWidth / 2, h: coin.offsetHeight / 2 };
+        const tf = (p) => `translate(${p.x - half.w}px, ${p.y - half.h}px)`;
+        coin.style.transform = tf(a);
+        const lift = Math.min(a.y, b.y) - 44;
+        if (outcome === "settle") {
+            await glide(coin, [{ transform: tf(a) }, { transform: tf({ x: (a.x + b.x) / 2, y: lift }), offset: 0.5 }, { transform: tf(b) }], 850, delay);
+            stamp("\u2713 settled", "ok", b.x - 16, b.y - 26);
+            if (destName) flashRow(destName, "rgba(116,198,157,.28)");
+        } else {
+            const wall = { x: a.x + (b.x - a.x) * 0.48, y: lift + 8 };
+            await glide(coin, [{ transform: tf(a) }, { transform: tf(wall) }], 480, delay);
+            coin.classList.add("bad");
+            stamp("\u2715 " + (reason || "refused"), "bad", wall.x - 30, wall.y - 26);
+            await glide(coin, [{ transform: tf(wall) }, { transform: tf(a) }], 460);
+        }
+        await fadeOut(coin);
+    }
+    // Compensation: the hold travels toward an account that isn't there, then comes home.
+    async function flyAndReturn({ amount, from, reason }) {
+        if (noMotion) return;
+        const a = midOf(from);
+        const gx = Math.min(a.x + 330, innerWidth - 130), gy = a.y - 6;
+        const ghost = el("div", "ghost", "account ?");
+        ghost.style.transform = `translate(${gx}px, ${gy}px)`;
+        fx.append(ghost);
+        const coin = el("div", "coin warn", money(amount, ""));
+        fx.append(coin);
+        const half = { w: coin.offsetWidth / 2, h: coin.offsetHeight / 2 };
+        const tf = (p) => `translate(${p.x - half.w}px, ${p.y - half.h}px)`;
+        coin.style.transform = tf(a);
+        const b = { x: gx, y: gy + 12 };
+        await glide(coin, [{ transform: tf(a) }, { transform: tf({ x: (a.x + b.x) / 2, y: Math.min(a.y, b.y) - 40 }), offset: 0.5 }, { transform: tf(b) }], 800);
+        stamp("\u2715 " + reason, "bad", gx - 16, gy - 26);
+        await glide(coin, [{ transform: tf(b) }, { transform: tf(a) }], 700);
+        stamp("hold released", "warn", a.x - 10, a.y - 28);
+        fadeOut(ghost);
+        await fadeOut(coin);
+    }
+
     async function settleAndShow() {
         // Let the worker's projection loop catch up — eventual consistency, visibly.
         for (let i = 0; i < 4; i++) { await new Promise(r => setTimeout(r, 350)); await refreshBalances(); }
@@ -434,6 +527,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     };
     $("s2").onclick = async () => {
         await api("POST", "/api/accounts/" + state.accounts.alice + "/deposits", { amount: 10000, currency: "USD" }, idem());
+        fly({ amount: 10000, from: $("s2"), to: rowFor("alice"), destName: "alice" });
         caption("<strong>Write, then read.</strong> The deposit appended an event; the balance is a projection that catches up asynchronously — watch its version tick. The API returned before the read model updated.");
         enable("s3", "s4");
         await settleAndShow();
@@ -443,6 +537,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const body = transferBody(state.accounts.alice, state.accounts.bob, 3000);
         const r = await api("POST", "/api/transfers", body, key);
         if (r.json?.transferId) track("transfers", r.json.transferId, "t1");
+        fly({ amount: 3000, from: rowFor("alice"), to: rowFor("bob"), destName: "bob" });
         state.step3 = { body, key };
         state.usedKey = key;
         caption("<strong>The saga, recorded.</strong> hold → post journal → settle, each step an event on the transfer stream (same correlation dot). The funds sat in <em>reserved</em> until settlement.");
@@ -452,6 +547,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     $("s4").onclick = async () => {
         const r = await api("POST", "/api/transfers", transferBody(state.accounts.alice, state.accounts.bob, 50000), idem());
         if (r.json?.transferId) track("transfers", r.json.transferId, "t2");
+        fly({ amount: 50000, from: rowFor("alice"), to: rowFor("bob"), outcome: "refuse", reason: r.json?.failureReason ?? "failed" });
         caption("<strong>A business failure is an outcome, not an error.</strong> 201 with status <em>failed</em> and a reason — the attempt itself is a recorded fact on the transfer stream. No account event was written.");
         await settleAndShow();
     };
@@ -467,6 +563,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const src = await openAccount("racer");
         const dst = state.accounts.alice ?? await openAccount("alice");
         await api("POST", "/api/accounts/" + src + "/deposits", { amount: 5000, currency: "USD" }, idem());
+        await refreshBalances(); // so the racer row exists as a launch pad
         const [a, b] = await Promise.all([
             api("POST", "/api/transfers", transferBody(src, dst, 5000), idem()),
             api("POST", "/api/transfers", transferBody(src, dst, 5000), idem()),
@@ -474,6 +571,15 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         for (const r of [a, b]) if (r.json?.transferId) track("transfers", r.json.transferId, "race");
         const done = [a, b].filter(r => r.json?.status === "completed").length;
         const loser = [a, b].find(r => r.json?.status === "failed");
+        [a, b].forEach((r, i) => fly({
+            amount: 5000,
+            from: rowFor("racer") ?? $("race"),
+            to: rowFor("alice"),
+            destName: "alice",
+            delay: i * 140,
+            outcome: r.json?.status === "completed" ? "settle" : "refuse",
+            reason: r.json?.failureReason ?? "lost the race",
+        }));
         caption(done === 1
             ? "<strong>Exactly one won.</strong> Two truly concurrent requests raced on the same stream; the UNIQUE(stream, version) constraint let one through. The loser failed with <em>" + (loser?.json?.failureReason ?? "?") + "</em> — either reason is correct: the money moved exactly once. One hold→debit trail in the journal."
             : "<strong>Invariant check: " + done + " completed.</strong> Expected exactly 1 — inspect the exchange above.", done === 1 ? "ok" : "bad");
@@ -497,6 +603,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const ghost = crypto.randomUUID();
         const r = await api("POST", "/api/transfers", transferBody(state.accounts.alice, ghost, 1000), idem());
         if (r.json?.transferId) track("transfers", r.json.transferId, "ghost");
+        flyAndReturn({ amount: 1000, from: rowFor("alice"), reason: r.json?.failureReason ?? "no such account" });
         caption("<strong>Compensation, visible.</strong> The hold succeeded, the journal post found no destination, so the saga released the hold — <em>funds_held</em> then <em>hold_released</em> on alice’s stream, balance intact.");
         await settleAndShow();
     };
