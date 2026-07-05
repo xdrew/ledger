@@ -43,6 +43,8 @@ button {
 }
 button:hover:not(:disabled) { background: #234437; }
 button:disabled { opacity: .45; cursor: default; }
+button.done::after { content: "\2713"; color: var(--mint); float: right; }
+.scenarios .step.done .n { color: var(--mint); border-color: #2E5A48; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--paper); outline-offset: 1px; }
 input[type=text] {
     font: inherit;
@@ -510,6 +512,17 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
                 ? "<strong>Feature-flagged, honestly.</strong> NL queries are off (501) rather than silently returning the unfiltered statement. Set LLM_STATEMENT_QUERY_ENABLED=1 and an ANTHROPIC_API_KEY to enable."
                 : "<strong>Translation failed (" + r.status + ").</strong> The endpoint never guesses.", r.status >= 502 ? "bad" : undefined);
     };
+    // A check marks every scenario that has already run (buttons stay re-runnable).
+    for (const id of ["s1", "s2", "s3", "s4", "s5", "race", "e1", "e2", "e3", "e4"]) {
+        const btn = $(id);
+        const original = btn.onclick;
+        btn.onclick = async () => {
+            await original();
+            btn.classList.add("done");
+            btn.closest(".step").classList.add("done");
+        };
+    }
+
     $("nlq").addEventListener("keydown", (e) => { if (e.key === "Enter" && !$("nlgo").disabled) $("nlgo").click(); });
 })();
 </script>
