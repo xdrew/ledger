@@ -33,10 +33,12 @@ final readonly class TracerFactory
             return new NoopTracer();
         }
 
-        // OTLP export runs through a BatchSpanProcessor: span end only queues, and
-        // an unreachable collector drops batches instead of stalling the pipeline
-        // (SimpleSpanProcessor retries synchronously on every span end — it once
-        // froze the projection worker when the collector was absent).
+        // OTLP export runs through a BatchSpanProcessor so span end only queues —
+        // but PHP has no background thread: the batch flush itself is synchronous,
+        // so the transport must fail FAST. With the default 10s timeout × 3
+        // retries an unreachable collector cost ~30s per flush and lagged the
+        // projection worker by ~18s per event burst (found live by the demo).
+        // 1s timeout + 1 retry bounds a broken collector to ~2s per batch.
         $processor = $this->otlpEndpoint === ''
             ? new SimpleSpanProcessor(new InMemoryExporter())
             : new BatchSpanProcessor($this->otlpExporter(), ClockFactory::getDefault());
@@ -52,8 +54,12 @@ final readonly class TracerFactory
 
     private function otlpExporter(): OtlpSpanExporter
     {
-        $transport = (new OtlpHttpTransportFactory())
-            ->create(rtrim($this->otlpEndpoint, '/') . '/v1/traces', 'application/x-protobuf');
+        $transport = (new OtlpHttpTransportFactory())->create(
+            rtrim($this->otlpEndpoint, '/') . '/v1/traces',
+            'application/x-protobuf',
+            timeout: 1.0,
+            maxRetries: 1,
+        );
 
         return new OtlpSpanExporter($transport);
     }
