@@ -130,7 +130,16 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     word-break: break-word;
 }
 .exchange .call .note { padding: 4px 10px 8px; color: var(--amber); font-size: 12.5px; }
-.models { margin-top: 20px; }
+.exchange { padding-top: 0; }
+.models {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--ink);
+    padding: 16px 0 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #24443A;
+}
 .models table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .models th, .models td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #24443A; }
 .models th { color: var(--faint); font-weight: 400; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
@@ -237,13 +246,13 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     </section>
 
     <section class="col exchange" aria-label="API exchange and read models">
-        <div class="eyebrow">api exchange — what the caller sees</div>
-        <div id="calls"><div class="empty">No calls yet. Run step 1.</div></div>
-
         <div class="models">
             <div class="eyebrow">read models — projections (eventually consistent)</div>
             <div id="balances"><div class="empty">Balances appear once accounts exist. Watch the version tick as projections catch up.</div></div>
         </div>
+
+        <div class="eyebrow">api exchange — what the caller sees</div>
+        <div id="calls"><div class="empty">No calls yet. Run step 1.</div></div>
     </section>
 
     <section class="col tape-col" aria-label="Event log">
