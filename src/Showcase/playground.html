@@ -242,21 +242,35 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     border: 1px solid var(--faint); color: var(--paper-dim); font-size: 10.5px;
 }
 
-/* ---- money flights: motion is money state (visual only; responses are the truth) ---- */
-#fx { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
-#fx .coin {
+/* ---- the money map: accounts are places; money travels visible wires ---- */
+.map { position: relative; height: 172px; border: 1px solid #24443A; background: var(--ink-2); overflow: hidden; }
+.map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.map line.flow { stroke: #8FA396; stroke-width: 1.5; stroke-dasharray: 7 5; animation: march .45s linear infinite; }
+.map line.flow.bad { stroke: var(--red); }
+@media (prefers-reduced-motion: reduce) { .map line.flow { animation: none; } }
+@keyframes march { to { stroke-dashoffset: -12; } }
+.map .node {
+    position: absolute; transform: translate(-50%, -50%);
+    border: 1px solid var(--faint); background: var(--ink);
+    padding: 3px 10px 4px; text-align: center; min-width: 92px;
+}
+.map .node .nm { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+.map .node .bal { font-size: 13px; font-weight: 600; }
+.map .node .sub { font-size: 10.5px; color: var(--faint); }
+.map .node .sub.hot { color: var(--amber); }
+.map .node.world, .map .node.ghost { border-style: dashed; background: transparent; color: var(--faint); min-width: 0; padding: 6px 10px; }
+.map .coin {
     position: absolute; left: 0; top: 0;
     background: var(--paper); color: var(--ink); border: 1px solid var(--ink);
-    padding: 1px 8px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
-    will-change: transform, opacity;
+    padding: 0 8px; font-size: 12px; font-weight: 600; white-space: nowrap;
+    will-change: transform, opacity; z-index: 2;
 }
-#fx .coin.bad { background: #F3D6CE; border-color: var(--red); color: var(--red); }
-#fx .coin.warn { background: #F3E2B9; border-color: #8A6A16; color: #8A6A16; }
-#fx .stamp { position: absolute; left: 0; top: 0; font-size: 11.5px; letter-spacing: .06em; white-space: nowrap; will-change: transform, opacity; }
-#fx .stamp.ok { color: var(--mint); }
-#fx .stamp.bad { color: var(--red); }
-#fx .stamp.warn { color: var(--amber); }
-#fx .ghost { position: absolute; left: 0; top: 0; border: 1px dashed var(--faint); color: var(--faint); padding: 1px 8px; font-size: 12.5px; }
+.map .coin.bad { background: #F3D6CE; border-color: var(--red); color: var(--red); }
+.map .coin.warn { background: #F3E2B9; border-color: #8A6A16; color: #8A6A16; }
+.map .stamp { position: absolute; left: 0; top: 0; font-size: 11.5px; letter-spacing: .06em; white-space: nowrap; z-index: 3; }
+.map .stamp.ok { color: var(--mint); }
+.map .stamp.bad { color: var(--red); }
+.map .stamp.warn { color: var(--amber); }
 
 @media (max-width: 1100px) {
     .layout { grid-template-columns: 230px 1fr; height: auto; }
@@ -342,8 +356,6 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     </section>
 </div>
 
-<div id="fx" aria-hidden="true"></div>
-
 <script>
 "use strict";
 (() => {
@@ -412,31 +424,60 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
     /* ---------- read models ---------- */
     const money = (minor, cur) => (minor / 100).toFixed(2) + (cur ? " " + cur : "");
-    // Renders the balances and reports convergence: whether every known account
+    /* ---------- the money map: accounts are places, money travels wires ---------- */
+    const SLOTS = [{ x: 38, y: 27 }, { x: 82, y: 27 }, { x: 58, y: 76 }];
+    const slotByName = {};
+    function ensureMap() {
+        let map = document.getElementById("map");
+        if (!map) {
+            map = el("div", "map");
+            map.id = "map";
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.id = "wires";
+            map.append(svg);
+            const world = el("div", "node world");
+            world.dataset.name = "world";
+            world.append(el("div", "nm", "world"));
+            world.style.left = "10%";
+            world.style.top = "50%";
+            map.append(world);
+            $("balances").replaceChildren(map);
+        }
+        return map;
+    }
+    function nodeFor(name) {
+        const map = ensureMap();
+        let node = map.querySelector('.node[data-name="' + name + '"]');
+        if (node) return node;
+        const slot = slotByName[name] ??= SLOTS[Object.keys(slotByName).length % SLOTS.length];
+        node = el("div", "node");
+        node.dataset.name = name;
+        node.append(el("div", "nm", name), el("div", "bal", "\u2026"), el("div", "sub", "awaiting projection"));
+        node.style.left = slot.x + "%";
+        node.style.top = slot.y + "%";
+        map.append(node);
+        return node;
+    }
+    // Updates the node cards and reports convergence: whether every known account
     // answered (projections caught up) and a snapshot key for change detection.
     async function refreshBalances() {
         const names = Object.keys(state.accounts);
         if (!names.length) return { allProjected: true, key: "" };
-        const rows = [];
+        let projected = 0;
+        const keys = [];
         for (const name of names) {
+            const node = nodeFor(name);
             const res = await fetch("/api/accounts/" + state.accounts[name], { headers: { "X-Api-Key": keyInput.value } });
-            if (res.ok) rows.push({ name, ...(await res.json()) });
+            if (!res.ok) continue;
+            const r = await res.json();
+            projected++;
+            keys.push(name + ":" + r.available + ":" + r.reserved + ":" + r.version);
+            node.querySelector(".bal").textContent = money(r.available, r.currency);
+            const sub = node.querySelector(".sub");
+            sub.textContent = "v" + r.version + (r.reserved > 0 ? " \u00B7 reserved " + money(r.reserved, "") : "");
+            sub.className = "sub" + (r.reserved > 0 ? " hot" : "");
         }
-        const t = document.createElement("table");
-        t.innerHTML = "<thead><tr><th>account</th><th>available</th><th>reserved</th><th>total</th><th>projection</th></tr></thead>";
-        const tb = document.createElement("tbody");
-        for (const r of rows) {
-            const tr = document.createElement("tr");
-            tr.append(el("td", "", r.name), el("td", "amt", money(r.available, r.currency)), el("td", "amt" + (r.reserved > 0 ? " hot" : ""), money(r.reserved, "")), el("td", "amt", money(r.total, "")), el("td", "vsn", "v" + r.version));
-            tb.append(tr);
-        }
-        t.append(tb);
-        $("balances").replaceChildren(t);
-
-        return {
-            allProjected: rows.length === names.length,
-            key: rows.map(r => r.name + ":" + r.available + ":" + r.reserved + ":" + r.version).join("|"),
-        };
+        return { allProjected: projected === names.length, key: keys.join("|") };
     }
 
     /* ---------- the journal tape ---------- */
@@ -479,79 +520,97 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         tape.lastElementChild?.scrollIntoView({ block: "nearest" });
     }
 
-    /* ---------- money flights (visual only; the API responses are the truth) ---------- */
-    const fx = $("fx");
+    /* ---------- wire travel (visual only; the API responses are the truth) ---------- */
     const noMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const rowFor = (name) => {
-        for (const tr of document.querySelectorAll("#balances tbody tr")) {
-            if (tr.firstChild?.textContent === name) return tr;
-        }
-        return null;
+    const centerOf = (elm) => {
+        const map = ensureMap().getBoundingClientRect();
+        const r = elm.getBoundingClientRect();
+        return { x: r.left - map.left + r.width / 2, y: r.top - map.top + r.height / 2 };
     };
-    const midOf = (elm) => {
-        const r = (elm ?? $("balances")).getBoundingClientRect();
-        return { x: r.left + Math.min(r.width * 0.4, 240), y: r.top + r.height / 2 };
-    };
-    function stamp(text, cls, x, y) {
+    function stampAt(text, cls, p) {
         const n = el("div", "stamp " + cls, text);
-        fx.append(n);
+        ensureMap().append(n);
         n.animate(
-            [{ opacity: 1, transform: `translate(${x}px, ${y}px)` }, { opacity: 0, transform: `translate(${x}px, ${y - 26}px)` }],
-            { duration: 1100, easing: "ease-out", fill: "forwards" },
+            [{ opacity: 1, transform: `translate(${p.x - 10}px, ${p.y - 30}px)` }, { opacity: 0, transform: `translate(${p.x - 10}px, ${p.y - 52}px)` }],
+            { duration: 1400, easing: "ease-out", fill: "forwards" },
         ).finished.then(() => n.remove());
     }
-    const flashRow = (name, rgba) =>
-        rowFor(name)?.animate([{ backgroundColor: rgba }, { backgroundColor: "transparent" }], { duration: 1300, easing: "ease-out" });
+    const flashNode = (node) =>
+        node.animate(
+            [{ backgroundColor: "rgba(116,198,157,.30)", borderColor: "#74C69D" }, { backgroundColor: "#0E1F1A", borderColor: "#8FA396" }],
+            { duration: 1200, easing: "ease-out" },
+        );
     const glide = (coin, frames, ms, delay = 0) =>
-        coin.animate(frames, { duration: ms, delay, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" }).finished;
-    async function fadeOut(n) {
-        await n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: "forwards" }).finished;
+        coin.animate(frames, { duration: ms, delay, easing: "cubic-bezier(.45,0,.55,1)", fill: "forwards" }).finished;
+    async function fadeOut(n, ms = 300) {
+        await n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, fill: "forwards" }).finished;
         n.remove();
     }
-    // A coin flies source -> destination. "settle" lands with a green flash;
-    // "refuse" is turned back at the boundary, stamped with the reason.
-    async function fly({ amount, from, to, destName, outcome = "settle", reason = "", delay = 0 }) {
-        if (noMotion) return;
-        const a = midOf(from), b = midOf(to);
-        const coin = el("div", "coin", money(amount, ""));
-        fx.append(coin);
-        const half = { w: coin.offsetWidth / 2, h: coin.offsetHeight / 2 };
-        const tf = (p) => `translate(${p.x - half.w}px, ${p.y - half.h}px)`;
-        coin.style.transform = tf(a);
-        const lift = Math.min(a.y, b.y) - 44;
-        if (outcome === "settle") {
-            await glide(coin, [{ transform: tf(a) }, { transform: tf({ x: (a.x + b.x) / 2, y: lift }), offset: 0.5 }, { transform: tf(b) }], 850, delay);
-            stamp("\u2713 settled", "ok", b.x - 16, b.y - 26);
-            if (destName) flashRow(destName, "rgba(116,198,157,.28)");
-        } else {
-            const wall = { x: a.x + (b.x - a.x) * 0.48, y: lift + 8 };
-            await glide(coin, [{ transform: tf(a) }, { transform: tf(wall) }], 480, delay);
-            coin.classList.add("bad");
-            stamp("\u2715 " + (reason || "refused"), "bad", wall.x - 30, wall.y - 26);
-            await glide(coin, [{ transform: tf(wall) }, { transform: tf(a) }], 460);
+    function ghostNode() {
+        const map = ensureMap();
+        let g = map.querySelector('.node.ghost');
+        if (!g) {
+            g = el("div", "node ghost");
+            g.append(el("div", "nm", "account ?"));
+            g.style.left = "88%";
+            g.style.top = "76%";
+            map.append(g);
         }
-        await fadeOut(coin);
+        return g;
     }
-    // Compensation: the hold travels toward an account that isn't there, then comes home.
-    async function flyAndReturn({ amount, from, reason }) {
-        if (noMotion) return;
-        const a = midOf(from);
-        const gx = Math.min(a.x + 330, innerWidth - 130), gy = a.y - 6;
-        const ghost = el("div", "ghost", "account ?");
-        ghost.style.transform = `translate(${gx}px, ${gy}px)`;
-        fx.append(ghost);
-        const coin = el("div", "coin warn", money(amount, ""));
-        fx.append(coin);
+    // Money travels a marching dashed wire from one place to another. "settle"
+    // arrives (node flash + stamp); "refuse" is turned back halfway; "bounce"
+    // reaches a place that is not there and comes home (the hold released).
+    async function moveMoney({ from, to, amount, outcome = "settle", reason = "" }) {
+        const map = ensureMap();
+        const fromEl = from === "world" ? map.querySelector('.node.world') : nodeFor(from);
+        const toEl = to === "ghost" ? ghostNode() : nodeFor(to);
+        const a = centerOf(fromEl), b = centerOf(toEl);
+        const svg = map.querySelector("svg");
+        const wire = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        wire.setAttribute("x1", String(a.x));
+        wire.setAttribute("y1", String(a.y));
+        wire.setAttribute("x2", String(b.x));
+        wire.setAttribute("y2", String(b.y));
+        wire.classList.add("flow");
+        svg.append(wire);
+        const cleanup = async (extra) => {
+            await new Promise(r => setTimeout(r, extra));
+            wire.remove();
+            if (to === "ghost") { const g = map.querySelector('.node.ghost'); if (g) fadeOut(g, 400); }
+        };
+        if (noMotion) {
+            if (outcome === "settle") { stampAt("\u2713 " + money(amount, ""), "ok", b); flashNode(toEl); }
+            else { wire.classList.add("bad"); stampAt("\u2715 " + (reason || "refused"), "bad", b); }
+            await cleanup(1400);
+            return;
+        }
+        const coin = el("div", "coin" + (outcome === "bounce" ? " warn" : ""), money(amount, ""));
+        map.append(coin);
         const half = { w: coin.offsetWidth / 2, h: coin.offsetHeight / 2 };
         const tf = (p) => `translate(${p.x - half.w}px, ${p.y - half.h}px)`;
         coin.style.transform = tf(a);
-        const b = { x: gx, y: gy + 12 };
-        await glide(coin, [{ transform: tf(a) }, { transform: tf({ x: (a.x + b.x) / 2, y: Math.min(a.y, b.y) - 40 }), offset: 0.5 }, { transform: tf(b) }], 800);
-        stamp("\u2715 " + reason, "bad", gx - 16, gy - 26);
-        await glide(coin, [{ transform: tf(b) }, { transform: tf(a) }], 700);
-        stamp("hold released", "warn", a.x - 10, a.y - 28);
-        fadeOut(ghost);
-        await fadeOut(coin);
+        if (outcome === "settle") {
+            await glide(coin, [{ transform: tf(a) }, { transform: tf(b) }], 950);
+            stampAt("\u2713 " + money(amount, ""), "ok", b);
+            flashNode(toEl);
+        } else if (outcome === "refuse") {
+            const mid = { x: a.x + (b.x - a.x) * 0.52, y: a.y + (b.y - a.y) * 0.52 };
+            await glide(coin, [{ transform: tf(a) }, { transform: tf(mid) }], 520);
+            coin.classList.add("bad");
+            wire.classList.add("bad");
+            stampAt("\u2715 " + (reason || "refused"), "bad", mid);
+            await glide(coin, [{ transform: tf(mid) }, { transform: tf(a) }], 480);
+        } else { // bounce: reach the void, come home, hold released
+            await glide(coin, [{ transform: tf(a) }, { transform: tf(b) }], 850);
+            coin.classList.add("bad");
+            wire.classList.add("bad");
+            stampAt("\u2715 " + (reason || "no such account"), "bad", b);
+            await glide(coin, [{ transform: tf(b) }, { transform: tf(a) }], 700);
+            stampAt("hold released", "warn", a);
+        }
+        fadeOut(coin);
+        await cleanup(900);
     }
 
     let settling = 0;
@@ -605,7 +664,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     };
     $("s2").onclick = async () => {
         await api("POST", "/api/accounts/" + state.accounts.alice + "/deposits", { amount: 10000, currency: "USD" }, idem());
-        fly({ amount: 10000, from: $("s2"), to: rowFor("alice"), destName: "alice" });
+        moveMoney({ amount: 10000, from: "world", to: "alice" });
         caption("<strong>Write, then read.</strong> The deposit appended an event; the balance is a projection that catches up asynchronously — watch its version tick. The API returned before the read model updated.");
         enable("s3", "s4");
         await settleAndShow();
@@ -615,7 +674,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const body = transferBody(state.accounts.alice, state.accounts.bob, 3000);
         const r = await api("POST", "/api/transfers", body, key);
         if (r.json?.transferId) track("transfers", r.json.transferId, "t1");
-        fly({ amount: 3000, from: rowFor("alice"), to: rowFor("bob"), destName: "bob" });
+        moveMoney({ amount: 3000, from: "alice", to: "bob" });
         state.step3 = { body, key };
         state.usedKey = key;
         caption("<strong>The saga, recorded.</strong> hold → post journal → settle, each step an event on the transfer stream (same correlation dot). The funds sat in <em>reserved</em> until settlement.");
@@ -625,7 +684,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     $("s4").onclick = async () => {
         const r = await api("POST", "/api/transfers", transferBody(state.accounts.alice, state.accounts.bob, 50000), idem());
         if (r.json?.transferId) track("transfers", r.json.transferId, "t2");
-        fly({ amount: 50000, from: rowFor("alice"), to: rowFor("bob"), outcome: "refuse", reason: r.json?.failureReason ?? "failed" });
+        moveMoney({ amount: 50000, from: "alice", to: "bob", outcome: "refuse", reason: r.json?.failureReason ?? "failed" });
         caption("<strong>A business failure is an outcome, not an error.</strong> 201 with status <em>failed</em> and a reason — the attempt itself is a recorded fact on the transfer stream. No account event was written.");
         await settleAndShow();
     };
@@ -747,7 +806,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const ghost = crypto.randomUUID();
         const r = await api("POST", "/api/transfers", transferBody(state.accounts.alice, ghost, 1000), idem());
         if (r.json?.transferId) track("transfers", r.json.transferId, "ghost");
-        flyAndReturn({ amount: 1000, from: rowFor("alice"), reason: r.json?.failureReason ?? "no such account" });
+        moveMoney({ amount: 1000, from: "alice", to: "ghost", outcome: "bounce", reason: r.json?.failureReason ?? "no such account" });
         caption("<strong>Compensation, visible.</strong> The hold succeeded, the journal post found no destination, so the saga released the hold — <em>funds_held</em> then <em>hold_released</em> on alice’s stream, balance intact.");
         await settleAndShow();
     };
