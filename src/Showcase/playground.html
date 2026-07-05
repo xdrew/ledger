@@ -209,34 +209,12 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 .tape .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.25); }
 .tape .payload { font-size: 12.5px; color: #5A5340; margin-top: 2px; word-break: break-word; }
 
-/* ---- the race stage: two requests, one version slot ---- */
-.stage { display: none; border: 1px solid #24443A; background: var(--ink-2); padding: 12px 14px; margin-bottom: 14px; }
-.stage.on { display: block; }
-.stage .lanes { position: relative; margin: 6px 0 2px; }
-.stage .lane { display: flex; align-items: center; gap: 10px; padding: 11px 0; }
-.stage .reqtag {
-    flex: 0 0 24px; text-align: center;
-    border: 1px solid var(--faint); color: var(--paper-dim);
-    font-size: 11.5px; letter-spacing: .06em;
-}
-.stage .track { position: relative; flex: 1; height: 24px; border-bottom: 1px dashed #2A4A3E; }
-.stage .runner {
-    position: absolute; left: 0; top: 0;
-    background: var(--paper); color: var(--ink); border: 1px solid var(--ink);
-    padding: 0 8px; font-size: 12px; font-weight: 600; white-space: nowrap;
-    will-change: transform;
-}
-.stage .runner.bad { background: #F3D6CE; border-color: var(--red); color: var(--red); }
-.stage .verdict { flex: 0 0 168px; font-size: 12.5px; color: var(--faint); }
-.stage .verdict.ok { color: var(--mint); }
-.stage .verdict.bad { color: var(--red); }
-.stage .gate { position: absolute; top: -4px; bottom: 2px; border-left: 3px double #8FA396; }
-.stage .gate span {
+/* ---- the on-map race gate ---- */
+.map .gate-mark { position: absolute; width: 0; height: 48px; border-left: 3px double #8FA396; transform: translate(-50%, -50%); z-index: 1; }
+.map .gate-mark span {
     position: absolute; left: 7px; top: 50%; transform: translateY(-50%);
-    font-size: 10.5px; line-height: 1.35; color: var(--faint); white-space: nowrap;
+    font-size: 10px; line-height: 1.3; color: var(--faint); white-space: nowrap;
 }
-.stage .phase { margin-top: 8px; font-size: 12.5px; color: var(--paper-dim); }
-.stage .phase strong { color: var(--amber); font-weight: 600; }
 .exchange .call .reqtag {
     flex: 0 0 20px; text-align: center;
     border: 1px solid var(--faint); color: var(--paper-dim); font-size: 10.5px;
@@ -329,16 +307,6 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         <div class="models">
             <div class="eyebrow">read models — projections (eventually consistent)<span id="sync" class="sync"></span></div>
             <div id="balances"><div class="empty">Balances appear once accounts exist. Watch the version tick as projections catch up.</div></div>
-        </div>
-
-        <div class="stage" id="stage" aria-label="Concurrency race, frame by frame">
-            <div class="eyebrow">the race, frame by frame</div>
-            <div class="lanes" id="lanes">
-                <div class="lane"><span class="reqtag">A</span><div class="track"><div class="runner" id="runA">50.00</div></div><span class="verdict" id="verA"></span></div>
-                <div class="lane"><span class="reqtag">B</span><div class="track"><div class="runner" id="runB">50.00</div></div><span class="verdict" id="verB"></span></div>
-                <div class="gate" id="gate" aria-hidden="true"><span>UNIQUE(stream, version)<br>— one slot</span></div>
-            </div>
-            <div class="phase" id="racephase"></div>
         </div>
 
         <div class="eyebrow">api exchange — what the caller sees</div>
@@ -694,84 +662,95 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         await settleAndShow();
     };
 
-    /* ---------- the race stage ---------- */
-    const racePhase = (html) => { $("racephase").innerHTML = html; };
-    function resetStage() {
-        $("stage").classList.add("on");
-        for (const id of ["runA", "runB"]) {
-            const r = $(id);
-            r.className = "runner";
-            r.getAnimations().forEach(a => a.cancel());
-            r.style.transform = "translateX(0)";
-        }
-        for (const id of ["verA", "verB"]) { const v = $(id); v.className = "verdict"; v.textContent = ""; }
-        // Place the gate at ~66% of the track, measured against the live layout.
-        const track = $("runA").parentElement;
-        const lanes = $("lanes");
-        $("gate").style.left = (track.offsetLeft - lanes.offsetLeft + track.offsetWidth * 0.66) + "px";
-        racePhase("");
-    }
-    // Both runners approach the gate in the same instant; the responses decide
-    // who passes. Reduced motion: final frame only.
-    async function runRace(results) {
-        const track = $("runA").parentElement;
-        const gateX = track.offsetWidth * 0.66;
-        const lanes = [
-            { run: $("runA"), ver: $("verA"), r: results[0] },
-            { run: $("runB"), ver: $("verB"), r: results[1] },
-        ];
-        const endX = (run) => track.offsetWidth - run.offsetWidth - 2;
-        const gatePos = (run) => gateX - run.offsetWidth - 6;
-        const verdictOf = ({ r, ver }) => {
-            const won = r.json?.status === "completed";
-            ver.textContent = won ? "\u2713 completed" : "\u2715 " + (r.json?.failureReason ?? "failed");
-            ver.className = "verdict " + (won ? "ok" : "bad");
-            return won;
+    /* ---------- the race, on the map ---------- */
+    // Two tagged coins launch from racer in the same instant along parallel
+    // wires; a double-line gate (the UNIQUE(stream, version) slot) stands on
+    // the route. The responses decide who passes through to alice and who is
+    // turned back with the money still at home.
+    async function raceOnMap([a, b]) {
+        const map = ensureMap();
+        const from = centerOf(nodeFor("racer"));
+        const to = centerOf(nodeFor("alice"));
+        const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+        const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+        const n = { x: -(to.y - from.y) / len, y: (to.x - from.x) / len }; // perpendicular
+        const gate = el("div", "gate-mark");
+        gate.append(el("span", "", "UNIQUE(stream, version) \u2014 one slot"));
+        gate.style.left = mid.x + "px";
+        gate.style.top = mid.y + "px";
+        map.append(gate);
+        const svg = map.querySelector("svg");
+        const lanes = [{ r: a, tag: "A", off: 10 }, { r: b, tag: "B", off: -10 }].map((lane) => {
+            const o = { x: n.x * lane.off, y: n.y * lane.off };
+            const wire = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            wire.setAttribute("x1", String(from.x + o.x));
+            wire.setAttribute("y1", String(from.y + o.y));
+            wire.setAttribute("x2", String(mid.x + o.x));
+            wire.setAttribute("y2", String(mid.y + o.y));
+            wire.classList.add("flow");
+            svg.append(wire);
+            return { ...lane, o, wire, won: lane.r.json?.status === "completed" };
+        });
+        const finish = async () => {
+            await new Promise(r => setTimeout(r, 1200));
+            for (const l of lanes) l.wire.remove();
+            fadeOut(gate, 400);
         };
         if (noMotion) {
-            for (const lane of lanes) {
-                const won = verdictOf(lane);
-                if (!won) lane.run.classList.add("bad");
-                lane.run.style.transform = `translateX(${won ? endX(lane.run) : gatePos(lane.run)}px)`;
+            for (const l of lanes) {
+                if (l.won) { stampAt("\u2713 " + l.tag + " completed", "ok", to); flashNode(nodeFor("alice")); }
+                else { l.wire.classList.add("bad"); stampAt("\u2715 " + l.tag + " " + (l.r.json?.failureReason ?? "failed"), "bad", mid); }
             }
+            await finish();
             return;
         }
-        // Frame 1: simultaneous launch toward the gate.
-        await Promise.all(lanes.map(({ run }) =>
-            run.animate(
-                [{ transform: "translateX(0)" }, { transform: `translateX(${gatePos(run)}px)` }],
-                { duration: 900, easing: "cubic-bezier(.45,0,.55,1)", fill: "forwards" },
-            ).finished));
-        racePhase("both are at the gate — the append wants version 3 of the racer stream, and only one row can have it");
-        await new Promise(r => setTimeout(r, 650));
+        const coins = lanes.map((l) => {
+            const coin = el("div", "coin", l.tag + " \u00B7 " + money(5000, ""));
+            map.append(coin);
+            const half = { w: coin.offsetWidth / 2, h: coin.offsetHeight / 2 };
+            const tf = (pt) => `translate(${pt.x + l.o.x - half.w}px, ${pt.y + l.o.y - half.h}px)`;
+            coin.style.transform = tf(from);
+            return { ...l, coin, tf };
+        });
+        // Frame 1: the same instant, side by side, toward the gate.
+        await Promise.all(coins.map((l) =>
+            glide(l.coin, [{ transform: l.tf(from) }, { transform: l.tf(mid) }], 900)));
+        caption("<strong>Both are at the gate.</strong> Each append wants the same next version of the racer stream \u2014 and the UNIQUE(stream, version) row can exist once.");
+        await new Promise(r => setTimeout(r, 700));
         // Frame 2: the responses decide.
-        await Promise.all(lanes.map(async (lane) => {
-            const won = verdictOf(lane);
-            if (won) {
-                await lane.run.animate(
-                    [{ transform: `translateX(${gatePos(lane.run)}px)` }, { transform: `translateX(${endX(lane.run)}px)` }],
-                    { duration: 450, easing: "cubic-bezier(.3,0,.4,1)", fill: "forwards" },
-                ).finished;
+        await Promise.all(coins.map(async (l) => {
+            if (l.won) {
+                const cont = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                cont.setAttribute("x1", String(mid.x + l.o.x));
+                cont.setAttribute("y1", String(mid.y + l.o.y));
+                cont.setAttribute("x2", String(to.x));
+                cont.setAttribute("y2", String(to.y));
+                cont.classList.add("flow");
+                svg.append(cont);
+                await glide(l.coin, [{ transform: l.tf(mid) }, { transform: `translate(${to.x - 30}px, ${to.y - 10}px)` }], 500);
+                stampAt("\u2713 " + l.tag + " completed", "ok", to);
+                flashNode(nodeFor("alice"));
+                setTimeout(() => cont.remove(), 1200);
             } else {
-                lane.run.classList.add("bad");
-                await lane.run.animate(
-                    [{ transform: `translateX(${gatePos(lane.run)}px)` }, { transform: `translateX(${gatePos(lane.run) - 26}px)` }],
-                    { duration: 380, easing: "cubic-bezier(.2,.8,.4,1)", fill: "forwards" },
-                ).finished;
+                l.coin.classList.add("bad");
+                l.wire.classList.add("bad");
+                stampAt("\u2715 " + l.tag + " " + (l.r.json?.failureReason ?? "failed"), "bad", { x: mid.x + l.o.x, y: mid.y + l.o.y });
+                await glide(l.coin, [{ transform: l.tf(mid) }, { transform: l.tf(from) }], 550);
+                stampAt("stayed home", "warn", from);
             }
         }));
+        coins.forEach((l) => fadeOut(l.coin));
+        await finish();
     }
 
-    /* ---------- the race ---------- */
+    /* ---------- the race ---------- */    /* ---------- the race ---------- */
     $("race").onclick = async () => {
-        resetStage();
-        caption("<strong>The double-spend attempt, live.</strong> Watch the stage: requests A and B carry the same 50.00 from the same account — funds for exactly one of them.");
-        racePhase("<strong>1</strong> · opening a fresh account and funding it with exactly 50.00…");
+        caption("<strong>1 · Setting up.</strong> Opening a fresh account (racer) on the map and funding it with exactly 50.00 — enough for one of the two transfers.");
         const src = await openAccount("racer");
         const dst = state.accounts.alice ?? await openAccount("alice");
         await api("POST", "/api/accounts/" + src + "/deposits", { amount: 5000, currency: "USD" }, idem());
-        await refreshBalances(); // so the racer row is visible below
-        racePhase("<strong>2</strong> · requests A and B fired in the same instant — two RoadRunner workers, one event stream");
+        await refreshBalances(); // the racer node appears before the coins launch
+        caption("<strong>2 · Fired in the same instant.</strong> Requests A and B leave together — watch the map: two wires from racer, one gate on the route.");
         const [a, b] = await Promise.all([
             api("POST", "/api/transfers", transferBody(src, dst, 5000), idem(), "A"),
             api("POST", "/api/transfers", transferBody(src, dst, 5000), idem(), "B"),
@@ -779,12 +758,9 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         for (const r of [a, b]) if (r.json?.transferId) track("transfers", r.json.transferId, "race");
         const done = [a, b].filter(r => r.json?.status === "completed").length;
         const loser = [a, b].find(r => r.json?.status === "failed");
-        await runRace([a, b]);
-        racePhase(done === 1
-            ? "<strong>3</strong> · the guard admitted exactly one — the money moved once. The loser\u2019s <em>" + (loser?.json?.failureReason ?? "?") + "</em> is the losing side of the same race: refused before the hold, or beaten to the version slot mid-flight."
-            : "<strong>3</strong> · invariant check: " + done + " completed — expected exactly 1, inspect the exchange (A and B) below.");
+        await raceOnMap([a, b]);
         caption(done === 1
-            ? "<strong>Exactly one won.</strong> The exchange shows A and B; the journal below shows one hold\u2192debit trail and the loser\u2019s failure event. Rerun it — the winner may swap, the invariant never does."
+            ? "<strong>3 · Exactly one won.</strong> The gate admitted one append; the loser\u2019s <em>" + (loser?.json?.failureReason ?? "?") + "</em> is the losing side of the same race \u2014 refused before the hold, or beaten to the version slot mid-flight. Match A and B in the exchange; the journal keeps one hold\u2192debit trail. Rerun it \u2014 the winner may swap, the invariant never does."
             : "<strong>Invariant check: " + done + " completed.</strong> Expected exactly 1 — inspect A and B in the exchange.", done === 1 ? "ok" : "bad");
         await settleAndShow();
     };
