@@ -22,7 +22,7 @@ use Doctrine\DBAL\ParameterType;
  *
  * `begin` claims the key atomically with INSERT ... ON CONFLICT DO NOTHING, so
  * exactly one concurrent caller wins. An existing row is then classified
- * (expired-reclaim / mismatch / in-progress / completed).
+ * (expired-or-stale-reclaim / mismatch / in-progress / completed).
  */
 final class DbalIdempotencyStore implements IdempotencyStore
 {
@@ -40,7 +40,9 @@ final class DbalIdempotencyStore implements IdempotencyStore
     public function begin(IdempotencyKey $key, string $route, string $requestHash): BeginOutcome
     {
         for ($attempt = 0; $attempt < self::MAX_ATTEMPTS; ++$attempt) {
-            $now = $this->clock->now()->format(self::TS);
+            $instant = $this->clock->now();
+            $now = $instant->format(self::TS);
+            $staleBefore = $instant->sub(new \DateInterval('PT' . self::STALE_IN_PROGRESS_SECONDS . 'S'))->format(self::TS);
 
             $inserted = $this->connection->executeStatement(
                 'INSERT INTO idempotency_keys (idempotency_key, route, request_hash, status, created_at)
@@ -52,16 +54,20 @@ final class DbalIdempotencyStore implements IdempotencyStore
                 return new Begun();
             }
 
-            // Reclaim an expired, completed row (atomic; only matches if expired).
+            // Reclaim an expired completed row, or a stale in-progress row whose
+            // owner died before completing or releasing (atomic; the WHERE only
+            // matches reclaimable rows).
             $reclaimed = $this->connection->executeStatement(
                 'UPDATE idempotency_keys
                  SET request_hash = :hash, status = :in_progress, created_at = :now,
                      completed_at = NULL, response_status = NULL, response_headers = NULL,
                      response_body = NULL, expires_at = NULL
                  WHERE idempotency_key = :key AND route = :route
-                   AND status = :completed AND expires_at < :now',
+                   AND ((status = :completed AND expires_at < :now)
+                     OR (status = :in_progress AND created_at < :stale_before))',
                 [
                     'key' => $key->value, 'route' => $route, 'hash' => $requestHash, 'now' => $now,
+                    'stale_before' => $staleBefore,
                     'in_progress' => self::STATUS_IN_PROGRESS, 'completed' => self::STATUS_COMPLETED,
                 ],
             );
@@ -116,6 +122,17 @@ final class DbalIdempotencyStore implements IdempotencyStore
                 'route' => $route,
             ],
             ['rs' => ParameterType::INTEGER],
+        );
+    }
+
+    public function release(IdempotencyKey $key, string $route): void
+    {
+        // Guarded on status so a completed row (e.g. finished by a competitor
+        // that reclaimed this key as stale) keeps its replayable response.
+        $this->connection->executeStatement(
+            'DELETE FROM idempotency_keys
+             WHERE idempotency_key = :key AND route = :route AND status = :in_progress',
+            ['key' => $key->value, 'route' => $route, 'in_progress' => self::STATUS_IN_PROGRESS],
         );
     }
 

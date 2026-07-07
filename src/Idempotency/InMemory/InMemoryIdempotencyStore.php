@@ -23,7 +23,7 @@ use App\SharedKernel\Clock\Clock;
 final class InMemoryIdempotencyStore implements IdempotencyStore
 {
     /**
-     * @var array<string, array{hash: string, status: string, response: ?StoredResponse, expiresAt: ?\DateTimeImmutable}>
+     * @var array<string, array{hash: string, status: string, response: ?StoredResponse, expiresAt: ?\DateTimeImmutable, createdAt: \DateTimeImmutable}>
      */
     private array $records = [];
 
@@ -43,8 +43,12 @@ final class InMemoryIdempotencyStore implements IdempotencyStore
             && $record['expiresAt'] !== null
             && $record['expiresAt'] < $now;
 
-        if ($record === null || $expired) {
-            $this->records[$id] = ['hash' => $requestHash, 'status' => 'in_progress', 'response' => null, 'expiresAt' => null];
+        $stale = $record !== null
+            && $record['status'] === 'in_progress'
+            && $record['createdAt'] < $now->sub(new \DateInterval('PT' . self::STALE_IN_PROGRESS_SECONDS . 'S'));
+
+        if ($record === null || $expired || $stale) {
+            $this->records[$id] = ['hash' => $requestHash, 'status' => 'in_progress', 'response' => null, 'expiresAt' => null, 'createdAt' => $now];
 
             return new Begun();
         }
@@ -72,6 +76,14 @@ final class InMemoryIdempotencyStore implements IdempotencyStore
         $record['response'] = $response;
         $record['expiresAt'] = $this->ttl->expiresFrom($this->clock->now());
         $this->records[$id] = $record;
+    }
+
+    public function release(IdempotencyKey $key, string $route): void
+    {
+        $id = $this->id($key, $route);
+        if (($this->records[$id]['status'] ?? null) === 'in_progress') {
+            unset($this->records[$id]);
+        }
     }
 
     private function id(IdempotencyKey $key, string $route): string

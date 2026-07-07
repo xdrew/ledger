@@ -81,4 +81,35 @@ final class InMemoryIdempotencyStoreTest extends TestCase
 
         self::assertInstanceOf(Begun::class, $this->store->begin($this->key(), self::ROUTE, 'hash-1'));
     }
+
+    #[Test]
+    public function releasedKeyCanBeRetriedImmediately(): void
+    {
+        $this->store->begin($this->key(), self::ROUTE, 'hash-1');
+
+        $this->store->release($this->key(), self::ROUTE);
+
+        self::assertInstanceOf(Begun::class, $this->store->begin($this->key(), self::ROUTE, 'hash-1'));
+    }
+
+    #[Test]
+    public function releasingACompletedKeyKeepsTheStoredResponse(): void
+    {
+        $this->store->begin($this->key(), self::ROUTE, 'hash-1');
+        $this->store->complete($this->key(), self::ROUTE, new StoredResponse(200, [], 'ok'));
+
+        $this->store->release($this->key(), self::ROUTE);
+
+        self::assertInstanceOf(Completed::class, $this->store->begin($this->key(), self::ROUTE, 'hash-1'));
+    }
+
+    #[Test]
+    public function staleInProgressKeyIsReclaimed(): void
+    {
+        $this->store->begin($this->key(), self::ROUTE, 'hash-1');
+
+        $this->clock->set(new \DateTimeImmutable('2026-01-01T00:06:00+00:00')); // +360s > 300s staleness
+
+        self::assertInstanceOf(Begun::class, $this->store->begin($this->key(), self::ROUTE, 'hash-1'));
+    }
 }

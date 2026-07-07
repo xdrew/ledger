@@ -23,7 +23,8 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * Makes mutating `/api` requests idempotent via the `Idempotency-Key` header and
  * the {@see IdempotencyStore}: reserve on the way in, replay a completed key,
  * reject in-flight (`409`) and reused-key/different-payload (`422`), and capture
- * the response to complete the key on the way out. Runs after the firewall so
+ * the response to complete the key on the way out (a 5xx releases the key
+ * instead, so a retry gets a fresh attempt). Runs after the firewall so
  * unauthenticated requests never reserve a key.
  */
 final class IdempotencyListener
@@ -92,15 +93,18 @@ final class IdempotencyListener
             return;
         }
 
-        $response = $event->getResponse();
-        // Do not memoize server errors: a retry should get a fresh attempt.
-        if ($response->getStatusCode() >= 500) {
-            return;
-        }
-
         $key = $reservation['key'];
         $route = $reservation['route'];
         \assert($key instanceof IdempotencyKey && \is_string($route));
+
+        $response = $event->getResponse();
+        // Do not memoize server errors: release the reservation so a retry gets
+        // a fresh attempt instead of hitting 409 In-Progress forever.
+        if ($response->getStatusCode() >= 500) {
+            $this->store->release($key, $route);
+
+            return;
+        }
 
         $contentType = $response->headers->get('Content-Type', 'application/json');
         $this->store->complete($key, $route, new StoredResponse(
