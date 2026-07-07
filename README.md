@@ -13,6 +13,11 @@ change-by-change plan.
 > bus, HTTP API (RoadRunner), observability, deployment (compose + Helm), CI. Docs:
 > [ADRs](docs/adr/) · [design](docs/design.md) · [runbook](docs/runbook.md) · [SLOs](docs/slo.md).
 
+> **Live demo:** <https://showcase.monadungeon.xyz> — the interactive playground against a
+> Kubernetes (k3s + this repo's Helm chart) deployment, auto-deployed by CI from `main`;
+> the **Ledger Core** Grafana dashboard is at [/grafana](https://showcase.monadungeon.xyz/grafana/)
+> (read-only). API key for requests: `local_dev_api_key`.
+
 ## Stack
 
 - PHP 8.5, Symfony 8, RoadRunner (HTTP + worker host), thesis/message-bus (in-process commands)

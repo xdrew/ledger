@@ -270,8 +270,8 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     </div>
     <nav class="links">
         <a href="/api/docs">api docs</a>
-        <a href="http://localhost:3000" rel="noopener">grafana</a>
-        <a href="http://localhost:9090" rel="noopener">prometheus</a>
+        <a id="lnk-grafana" href="http://localhost:3000" rel="noopener">grafana</a>
+        <a id="lnk-prometheus" href="http://localhost:9090" rel="noopener">prometheus</a>
         <a href="https://github.com/xdrew/ledger" rel="noopener">source</a>
     </nav>
 </header>
@@ -335,6 +335,14 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         usedKey: null,         // an idempotency key already completed (edge case e1)
         head: {},              // account id -> latest version on the write side (from the event stream)
     };
+
+    /* ---------- observability links (compose vs public deployment) ---------- */
+    // Locally (compose) Grafana/Prometheus sit on their own ports. On the public
+    // deployment Grafana is served under /grafana and Prometheus is not exposed.
+    if (location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+        $("lnk-grafana").href = "/grafana/";
+        $("lnk-prometheus").remove();
+    }
 
     /* ---------- api client (a plain client: key from the field) ---------- */
     const keyInput = $("apikey");
