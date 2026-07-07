@@ -44,7 +44,7 @@ button {
 button:hover:not(:disabled) { background: #234437; }
 button:disabled { opacity: .45; cursor: default; }
 button.done::after { content: "\2713"; color: var(--mint); float: right; }
-button.busy::after { content: "\258C"; color: var(--amber); float: right; animation: blink 1s steps(2, start) infinite; }
+button.busy::after { content: "\258C\00A0" attr(data-inflight); color: var(--amber); float: right; font-variant-numeric: tabular-nums; animation: blink 1s steps(2, start) infinite; }
 @media (prefers-reduced-motion: reduce) { button.busy::after { animation: none; } }
 @keyframes blink { 50% { opacity: 0; } }
 .scenarios .step.done .n { color: var(--mint); border-color: #2E5A48; }
@@ -333,6 +333,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         streams: [],           // {kind: 'accounts'|'transfers', id, label}
         step3: null,           // {body, key} for the replay
         usedKey: null,         // an idempotency key already completed (edge case e1)
+        head: {},              // account id -> latest version on the write side (from the event stream)
     };
 
     /* ---------- api client (a plain client: key from the field) ---------- */
@@ -348,7 +349,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         if (idemKey) headers["Idempotency-Key"] = idemKey;
         let status = 0, json = null, replayed = null;
         try {
-            const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+            const res = await fetch(path, { method, headers, signal: AbortSignal.timeout(8000), body: body === undefined ? undefined : JSON.stringify(body) });
             status = res.status;
             replayed = res.headers.get("Idempotent-Replayed");
             try { json = await res.json(); } catch { json = null; }
@@ -432,22 +433,32 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     // answered (projections caught up) and a snapshot key for change detection.
     async function refreshBalances() {
         const names = Object.keys(state.accounts);
-        if (!names.length) return { allProjected: true, key: "" };
-        let projected = 0;
+        if (!names.length) return { allProjected: true, key: "", lag: 0 };
+        let projected = 0, lag = 0;
         const keys = [];
         for (const name of names) {
             const node = nodeFor(name);
-            const res = await fetch("/api/accounts/" + state.accounts[name], { headers: { "X-Api-Key": keyInput.value } });
+            const id = state.accounts[name];
+            let res;
+            try { res = await fetch("/api/accounts/" + id, { headers: { "X-Api-Key": keyInput.value }, signal: AbortSignal.timeout(8000) }); }
+            catch { continue; } // a stalled/timed-out poll counts as not-yet-projected, never a hang
             if (!res.ok) continue;
             const r = await res.json();
             projected++;
             keys.push(name + ":" + r.available + ":" + r.reserved + ":" + r.version);
+            // Lag = how many events the write side has that the projection has not
+            // applied yet. head is the event-stream top; r.version is the read model.
+            const behind = Math.max(0, (state.head[id] ?? r.version) - r.version);
+            lag += behind;
             node.querySelector(".bal").textContent = money(r.available, r.currency);
             const sub = node.querySelector(".sub");
-            sub.textContent = "v" + r.version + (r.reserved > 0 ? " \u00B7 reserved " + money(r.reserved, "") : "");
-            sub.className = "sub" + (r.reserved > 0 ? " hot" : "");
+            const bits = ["v" + r.version];
+            if (behind > 0) bits.push("behind " + behind);
+            if (r.reserved > 0) bits.push("reserved " + money(r.reserved, ""));
+            sub.textContent = bits.join(" \u00B7 ");
+            sub.className = "sub" + (behind > 0 || r.reserved > 0 ? " hot" : "");
         }
-        return { allProjected: projected === names.length, key: keys.join("|") };
+        return { allProjected: projected === names.length, key: keys.join("|"), lag };
     }
 
     /* ---------- the journal tape ---------- */
@@ -456,10 +467,17 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     async function refreshTape() {
         const all = [];
         for (const s of state.streams) {
-            const res = await fetch("/api/" + s.kind + "/" + s.id + "/events", { headers: { "X-Api-Key": keyInput.value } });
+            let res;
+            try { res = await fetch("/api/" + s.kind + "/" + s.id + "/events", { headers: { "X-Api-Key": keyInput.value }, signal: AbortSignal.timeout(8000) }); }
+            catch { continue; }
             if (!res.ok) continue;
             const data = await res.json();
-            for (const e of data.events) all.push({ ...e, streamType: data.streamType, label: s.label });
+            for (const e of data.events) {
+                all.push({ ...e, streamType: data.streamType, label: s.label });
+                // The event stream is the write side — its top version is the truth
+                // the projection is racing to catch. Track it to measure the lag.
+                if (data.streamType === "account") state.head[s.id] = Math.max(state.head[s.id] ?? 0, e.version);
+            }
         }
         all.sort((a, b) => a.globalPosition - b.globalPosition);
         const tape = $("tape");
@@ -594,21 +612,24 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         // says "settled" when that is true — never over a stale panel.
         const sync = $("sync");
         settling++;
-        sync.textContent = "\u25CF projections syncing\u2026";
+        sync.textContent = "\u25D0 projections syncing\u2026";
         sync.className = "sync on";
         let converged = false;
         try {
             let previous = null;
             for (let i = 0; i < 14; i++) {
                 await new Promise(r => setTimeout(r, 350));
-                const snap = await refreshBalances();
-                await refreshTape();
-                if (snap.allProjected && previous === snap.key) { converged = true; break; }
+                await refreshTape();            // refresh the write-side head first...
+                const snap = await refreshBalances();  // ...so this tick's lag is current
+                sync.textContent = snap.lag > 0
+                    ? "\u25D0 projections lag +" + snap.lag + " event" + (snap.lag === 1 ? "" : "s")
+                    : "\u25D0 projections syncing\u2026";
+                if (snap.allProjected && snap.lag === 0 && previous === snap.key) { converged = true; break; }
                 previous = snap.key;
             }
         } finally {
             if (--settling === 0) {
-                sync.textContent = converged ? "\u2713 settled" : "\u25CF still catching up \u2014 any action refreshes";
+                sync.textContent = converged ? "\u2713 settled \u00B7 lag 0" : "\u25D0 still catching up \u2014 any action refreshes";
                 sync.className = converged ? "sync ok" : "sync on";
             }
         }
@@ -671,18 +692,24 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const body = transferBody(await ensureAccount("alice"), await ensureAccount("bob"), 3000);
         const r = await api("POST", "/api/transfers", body, key);
         if (r.json?.transferId) track("transfers", r.json.transferId, "t1");
-        moveMoney({ amount: 3000, from: "alice", to: "bob" });
+        const failed = r.json?.status === "failed";
+        moveMoney({ amount: 3000, from: "alice", to: "bob", outcome: failed ? "refuse" : "settle", reason: r.json?.failureReason ?? "failed" });
         state.step3 = { body, key };
         state.usedKey = key;
-        caption("<strong>The saga, recorded.</strong> hold → post journal → settle, each step an event on the transfer stream (same correlation dot). The funds sat in <em>reserved</em> until settlement.");
+        caption(failed
+            ? "<strong>A business failure is an outcome, not an error.</strong> Alice was short, so the hold was refused — 201 with status <em>failed</em> and a reason, recorded on the transfer stream. No money moved."
+            : "<strong>The saga, recorded.</strong> hold → post journal → settle, each step an event on the transfer stream (same correlation dot). The funds sat in <em>reserved</em> until settlement.");
         enable("s5", "e1", "e4");
         await settleAndShow();
     };
     $("s4").onclick = async () => {
         const r = await api("POST", "/api/transfers", transferBody(await ensureAccount("alice"), await ensureAccount("bob"), 50000), idem());
         if (r.json?.transferId) track("transfers", r.json.transferId, "t2");
-        moveMoney({ amount: 50000, from: "alice", to: "bob", outcome: "refuse", reason: r.json?.failureReason ?? "failed" });
-        caption("<strong>A business failure is an outcome, not an error.</strong> 201 with status <em>failed</em> and a reason — the attempt itself is a recorded fact on the transfer stream. No account event was written.");
+        const failed = r.json?.status === "failed";
+        moveMoney({ amount: 50000, from: "alice", to: "bob", outcome: failed ? "refuse" : "settle", reason: r.json?.failureReason ?? "failed" });
+        caption(failed
+            ? "<strong>A business failure is an outcome, not an error.</strong> 201 with status <em>failed</em> and a reason — the attempt itself is a recorded fact on the transfer stream. No account event was written."
+            : "<strong>Enough funds this run, so it settled.</strong> The same 500.00 that fails when Alice is short posts cleanly when she isn't — the check runs on the write side, not on these read-model cards. The animation follows the real <em>status</em>, not the button's label.");
         await settleAndShow();
     };
     $("s5").onclick = async () => {
@@ -835,14 +862,19 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     for (const id of ["s1", "s2", "s3", "s4", "s5", "race", "e1", "e2", "e3", "e4", "nlgo"]) {
         const btn = $(id);
         const original = btn.onclick;
+        let inflight = 0;
         btn.onclick = async () => {
+            inflight++; // every click is another concurrent run; the cursor counts them
+            btn.dataset.inflight = String(inflight);
             btn.classList.add("busy");
             try {
                 await original();
                 btn.classList.add("done");
                 btn.closest(".step")?.classList.add("done");
             } finally {
-                btn.classList.remove("busy");
+                inflight--;
+                btn.dataset.inflight = String(inflight);
+                if (inflight === 0) btn.classList.remove("busy");
             }
         };
     }
