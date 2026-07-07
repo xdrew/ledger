@@ -160,6 +160,93 @@ final class TransferOrchestratorTest extends TestCase
     }
 
     #[Test]
+    public function aTransferToAFrozenDestinationFailsAndReleasesTheHold(): void
+    {
+        $env = TransferTestEnvironment::inMemory();
+        $source = $env->openAccount(10_000);
+        $destination = $env->openAccount(0);
+        $env->freezeAccount($destination);
+
+        $transfer = $env->orchestrator->initiate(new InitiateTransfer(TransferId::generate(), $source, $destination, $this->usd(10_000)));
+
+        self::assertSame(TransferStatus::Failed, $transfer->status());
+        self::assertSame(FailureReason::FrozenAccount, $transfer->failureReason());
+        // Money conserved: the posting refused before settlement, so the hold
+        // was released and the source was never debited. (An earlier version
+        // rejected only closed destinations here; a frozen one passed the
+        // posting, got the source debited, and then failed the credit with no
+        // compensation — the transfer stuck `posted` with the money gone.)
+        self::assertNull($transfer->journalEntryId());
+        self::assertTrue($env->accounts->load($source)->availableBalance()->equals($this->usd(10_000)));
+        self::assertTrue($env->accounts->load($source)->reservedBalance()->equals($this->usd(0)));
+        self::assertTrue($env->accounts->load($destination)->availableBalance()->equals($this->usd(0)));
+    }
+
+    #[Test]
+    public function aTransferToAForeignCurrencyDestinationFailsAndReleasesTheHold(): void
+    {
+        $env = TransferTestEnvironment::inMemory();
+        $source = $env->openAccount(10_000);
+        $destination = $env->openAccount(0, 'EUR');
+
+        $transfer = $env->orchestrator->initiate(new InitiateTransfer(TransferId::generate(), $source, $destination, $this->usd(10_000)));
+
+        self::assertSame(TransferStatus::Failed, $transfer->status());
+        self::assertSame(FailureReason::CurrencyMismatch, $transfer->failureReason());
+        self::assertNull($transfer->journalEntryId());
+        self::assertTrue($env->accounts->load($source)->availableBalance()->equals($this->usd(10_000)));
+        self::assertTrue($env->accounts->load($source)->reservedBalance()->equals($this->usd(0)));
+    }
+
+    #[Test]
+    public function aTransferFromAFrozenSourceFailsWithNoPartialEffects(): void
+    {
+        $env = TransferTestEnvironment::inMemory();
+        $source = $env->openAccount(10_000);
+        $env->freezeAccount($source);
+        $destination = $env->openAccount(0);
+
+        $transfer = $env->orchestrator->initiate(new InitiateTransfer(TransferId::generate(), $source, $destination, $this->usd(10_000)));
+
+        self::assertSame(TransferStatus::Failed, $transfer->status());
+        self::assertSame(FailureReason::FrozenAccount, $transfer->failureReason());
+        self::assertTrue($env->accounts->load($source)->availableBalance()->equals($this->usd(10_000)));
+        self::assertTrue($env->accounts->load($source)->reservedBalance()->equals($this->usd(0)));
+        self::assertTrue($env->accounts->load($destination)->availableBalance()->equals($this->usd(0)));
+    }
+
+    #[Test]
+    public function aTransferFromAnUnknownSourceFailsWithUnknownAccount(): void
+    {
+        $env = TransferTestEnvironment::inMemory();
+        $ghost = AccountId::generate(); // never opened
+        $destination = $env->openAccount(0);
+
+        $transfer = $env->orchestrator->initiate(new InitiateTransfer(TransferId::generate(), $ghost, $destination, $this->usd(1_000)));
+
+        self::assertSame(TransferStatus::Failed, $transfer->status());
+        self::assertSame(FailureReason::UnknownAccount, $transfer->failureReason());
+        self::assertTrue($env->accounts->load($destination)->availableBalance()->equals($this->usd(0)));
+    }
+
+    #[Test]
+    public function aTransferInACurrencyForeignToTheSourceFailsAtTheHold(): void
+    {
+        $env = TransferTestEnvironment::inMemory();
+        $source = $env->openAccount(10_000);
+        $destination = $env->openAccount(0);
+
+        $eur = Money::of(1_000, Currency::of('EUR'));
+        $transfer = $env->orchestrator->initiate(new InitiateTransfer(TransferId::generate(), $source, $destination, $eur));
+
+        self::assertSame(TransferStatus::Failed, $transfer->status());
+        self::assertSame(FailureReason::CurrencyMismatch, $transfer->failureReason());
+        self::assertNull($transfer->journalEntryId());
+        self::assertTrue($env->accounts->load($source)->availableBalance()->equals($this->usd(10_000)));
+        self::assertTrue($env->accounts->load($source)->reservedBalance()->equals($this->usd(0)));
+    }
+
+    #[Test]
     public function aTransferToAnUnknownDestinationFailsAndReleasesTheHold(): void
     {
         $env = TransferTestEnvironment::inMemory();

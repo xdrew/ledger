@@ -6,10 +6,15 @@ namespace App\Transfers\Application;
 
 use App\Accounts\Domain\AccountId;
 use App\Accounts\Domain\AccountRepository;
+use App\Accounts\Domain\AccountStatus;
+use App\Accounts\Domain\Exception\AccountNotActive;
+use App\Accounts\Domain\Exception\AccountNotFound;
 use App\Accounts\Domain\Exception\InsufficientFunds;
 use App\EventStore\ConcurrencyConflict;
 use App\Ledger\Domain\AccountRef;
 use App\Ledger\Domain\Exception\ClosedAccountPosting;
+use App\Ledger\Domain\Exception\CurrencyMismatchPosting;
+use App\Ledger\Domain\Exception\FrozenAccountPosting;
 use App\Ledger\Domain\Exception\UnknownAccountPosting;
 use App\Ledger\Domain\JournalEntryId;
 use App\Ledger\Domain\JournalPostingService;
@@ -17,6 +22,7 @@ use App\Ledger\Domain\LedgerRepository;
 use App\Ledger\Domain\Leg;
 use App\Observability\Metrics\Metric;
 use App\Observability\Metrics\Metrics;
+use App\SharedKernel\Money\CurrencyMismatch;
 use App\SharedKernel\Money\Money;
 use App\Transfers\Domain\Exception\TransferNotReversible;
 use App\Transfers\Domain\FailureReason;
@@ -75,8 +81,9 @@ final class TransferOrchestrator
 
     private function run(Transfer $transfer, AccountId $sourceId, AccountId $destinationId, Money $amount): Transfer
     {
-        // Step 1: hold on the source. Insufficient funds or a lost concurrency
-        // race fails here with no partial effects.
+        // Step 1: hold on the source. Insufficient funds, an unknown or non-open
+        // source, a wrong-currency amount or a lost concurrency race fails here
+        // with no partial effects.
         try {
             $source = $this->accounts->load($sourceId);
             $source->hold($amount);
@@ -85,6 +92,12 @@ final class TransferOrchestrator
             return $this->fail($transfer, FailureReason::InsufficientFunds);
         } catch (ConcurrencyConflict) {
             return $this->fail($transfer, FailureReason::Conflict);
+        } catch (AccountNotFound) {
+            return $this->fail($transfer, FailureReason::UnknownAccount);
+        } catch (AccountNotActive $error) {
+            return $this->fail($transfer, $error->status === AccountStatus::Frozen ? FailureReason::FrozenAccount : FailureReason::ClosedAccount);
+        } catch (CurrencyMismatch) {
+            return $this->fail($transfer, FailureReason::CurrencyMismatch);
         }
 
         $transfer->markHeld();
@@ -108,10 +121,10 @@ final class TransferOrchestrator
         $transfer->markPosted($journalEntry->id()->toString());
         $this->transfers->save($transfer);
 
-        // Step 3: settle balances. Business preconditions (existence, status,
-        // funds) were all enforced by the hold and the posting, so the only
-        // expected failure here is a transient concurrency race — retried with a
-        // fresh aggregate load. Until the debit applies, the hold is intact and
+        // Step 3: settle balances. Business preconditions (existence, open
+        // status, matching currency, funds) were all enforced by the hold and
+        // the posting, so the only expected failure here is a transient
+        // concurrency race — retried with a fresh aggregate load. Until the debit applies, the hold is intact and
         // releasing it is the correct compensation. Once the debit has applied
         // the hold no longer exists, so a residual credit failure must NOT
         // "compensate": it propagates, leaving the transfer loudly `posted`
@@ -192,6 +205,8 @@ final class TransferOrchestrator
         return match (true) {
             $error instanceof UnknownAccountPosting => FailureReason::UnknownAccount,
             $error instanceof ClosedAccountPosting => FailureReason::ClosedAccount,
+            $error instanceof FrozenAccountPosting => FailureReason::FrozenAccount,
+            $error instanceof CurrencyMismatchPosting => FailureReason::CurrencyMismatch,
             $error instanceof ConcurrencyConflict => FailureReason::Conflict,
             default => FailureReason::Other,
         };

@@ -65,12 +65,12 @@ final class TransferTestEnvironment
         return new self($store, new EventSourcedAccountRepository($store));
     }
 
-    public function openAccount(int $deposit = 0): AccountId
+    public function openAccount(int $deposit = 0, string $currency = 'USD'): AccountId
     {
         $id = AccountId::generate();
-        $account = Account::open($id, Currency::of('USD'));
+        $account = Account::open($id, Currency::of($currency));
         if ($deposit > 0) {
-            $account->deposit(self::usd($deposit));
+            $account->deposit(Money::of($deposit, Currency::of($currency)));
         }
         $this->accounts->save($account);
 
@@ -81,6 +81,13 @@ final class TransferTestEnvironment
     {
         $account = $this->accounts->load($id);
         $account->close();
+        $this->accounts->save($account);
+    }
+
+    public function freezeAccount(AccountId $id): void
+    {
+        $account = $this->accounts->load($id);
+        $account->freeze();
         $this->accounts->save($account);
     }
 

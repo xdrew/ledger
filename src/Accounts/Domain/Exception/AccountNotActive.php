@@ -11,8 +11,13 @@ use App\Accounts\Domain\AccountStatus;
  */
 final class AccountNotActive extends \RuntimeException
 {
+    private function __construct(string $message, public readonly AccountStatus $status)
+    {
+        parent::__construct($message);
+    }
+
     public static function forStatus(AccountStatus $status): self
     {
-        return new self(\sprintf('Account is not active (status: %s).', $status->value));
+        return new self(\sprintf('Account is not active (status: %s).', $status->value), $status);
     }
 }
