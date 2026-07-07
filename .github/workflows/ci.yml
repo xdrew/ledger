@@ -135,7 +135,7 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/ledger-core
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha
+            type=sha,format=long
 
       - name: Build (and push on main)
         uses: docker/build-push-action@v6
@@ -235,3 +235,32 @@ jobs:
           RESULT=$(curl -sf "${H[@]}" -H 'Idempotency-Key: e2e-tr' -d "{\"sourceAccountId\":\"$SRC\",\"destinationAccountId\":\"$DST\",\"amount\":10000,\"currency\":\"USD\"}" localhost:8080/api/transfers)
           echo "$RESULT"
           echo "$RESULT" | jq -e '.status == "completed"'
+
+  # Stage 5 (main only): roll the image that just passed cd-smoke onto the
+  # showcase VM. The SSH key is restricted on the server to a forced command
+  # that only accepts "ledger-deploy <tag>"; the server pulls the chart from
+  # this repo and the image from GHCR itself.
+  deploy:
+    needs: cd-smoke
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-showcase
+      cancel-in-progress: false
+    environment:
+      name: showcase
+      url: https://showcase.monadungeon.xyz
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 46.62.174.208 >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes root@46.62.174.208 "ledger-deploy sha-${GITHUB_SHA}"
+
+      - name: Showcase is serving the new revision
+        run: |
+          curl -fsS -m 10 https://showcase.monadungeon.xyz/readyz | jq -e '.status == "ready"'
