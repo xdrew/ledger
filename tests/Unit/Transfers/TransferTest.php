@@ -63,6 +63,15 @@ final class TransferTest extends TestCase
     }
 
     #[Test]
+    public function postingBeforeTheHoldIsRejected(): void
+    {
+        $transfer = $this->transfer();
+
+        $this->expectException(InvalidTransferTransition::class);
+        $transfer->markPosted('journal-1');
+    }
+
+    #[Test]
     public function aCompletedTransferCannotBeFailed(): void
     {
         $transfer = $this->transfer();

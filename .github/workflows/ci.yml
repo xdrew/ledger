@@ -80,8 +80,8 @@ jobs:
           helm template smoke deploy/helm/ledger-core > /dev/null
 
   # Stage 2 (§7.6): mutation testing on the domain layer. Unit-suite-only, so no
-  # database. Blocking: the MSI floor sits below the measured score (86%) to
-  # catch gutted tests, not to flake.
+  # database. Blocking: the MSI floor sits below the measured score (98%; the
+  # remainder is equivalent mutants) to catch gutted tests, not to flake.
   mutation:
     needs: quality
     runs-on: ubuntu-latest
@@ -105,8 +105,8 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Infection (domain, min MSI 80)
-        run: vendor/bin/infection --min-msi=80 --no-progress --logger-github
+      - name: Infection (domain, min MSI 95)
+        run: vendor/bin/infection --min-msi=95 --no-progress --logger-github
 
   # Stage 3 (§7.7): the production image builds on every run; main pushes to GHCR.
   build:

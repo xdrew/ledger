@@ -51,4 +51,20 @@ final class EventSerializerTest extends TestCase
         $this->expectException(UnknownEventType::class);
         $this->serializer()->deserialize('test.never_registered', 1, []);
     }
+
+    #[Test]
+    public function registrationDefaultsToSchemaVersionOne(): void
+    {
+        $registry = new EventTypeRegistry();
+        $registry->register(SomethingHappened::TYPE, SomethingHappened::class);
+
+        self::assertSame(1, $registry->schemaVersionForClass(SomethingHappened::class));
+    }
+
+    #[Test]
+    public function schemaVersionForAnUnregisteredClassFailsLoudly(): void
+    {
+        $this->expectException(UnknownEventType::class);
+        (new EventTypeRegistry())->schemaVersionForClass(SomethingHappened::class);
+    }
 }

@@ -112,4 +112,52 @@ final class InMemoryIdempotencyStoreTest extends TestCase
 
         self::assertInstanceOf(Begun::class, $this->store->begin($this->key(), self::ROUTE, 'hash-1'));
     }
+
+    #[Test]
+    public function aKeyCompletedExactlyTtlAgoStillReplays(): void
+    {
+        $this->store->begin($this->key(), self::ROUTE, 'hash-1');
+        $this->store->complete($this->key(), self::ROUTE, new StoredResponse(200, [], 'ok'));
+
+        // Expiry is strict: at exactly created+TTL the key is still replayable.
+        $this->clock->set(new \DateTimeImmutable('2026-01-01T00:01:00+00:00')); // +60s == TTL
+
+        self::assertInstanceOf(Completed::class, $this->store->begin($this->key(), self::ROUTE, 'hash-1'));
+    }
+
+    #[Test]
+    public function anInProgressKeyExactlyAtTheStalenessBoundIsStillInFlight(): void
+    {
+        $this->store->begin($this->key(), self::ROUTE, 'hash-1');
+
+        // Staleness is strict: at exactly created+300s the owner is still trusted.
+        $this->clock->set(new \DateTimeImmutable('2026-01-01T00:05:00+00:00')); // +300s
+
+        self::assertInstanceOf(InProgress::class, $this->store->begin($this->key(), self::ROUTE, 'hash-1'));
+    }
+
+    #[Test]
+    public function theSameKeyOnAnotherRouteIsAnIndependentReservation(): void
+    {
+        $this->store->begin($this->key(), 'POST /accounts', 'hash-1');
+
+        self::assertInstanceOf(Begun::class, $this->store->begin($this->key(), 'POST /transfers', 'hash-1'));
+    }
+
+    #[Test]
+    public function anotherKeyOnTheSameRouteIsAnIndependentReservation(): void
+    {
+        $this->store->begin($this->key('key-1'), self::ROUTE, 'hash-1');
+
+        self::assertInstanceOf(Begun::class, $this->store->begin($this->key('key-2'), self::ROUTE, 'hash-1'));
+    }
+
+    #[Test]
+    public function keyAndRouteDoNotConcatenateIntoCollidingIdentities(): void
+    {
+        // Without a separator, ("ab", "c") and ("a", "bc") would be one record.
+        $this->store->begin($this->key('ab'), 'c', 'hash-1');
+
+        self::assertInstanceOf(Begun::class, $this->store->begin($this->key('a'), 'bc', 'hash-1'));
+    }
 }

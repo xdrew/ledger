@@ -36,6 +36,7 @@ final class MoneyTest extends TestCase
         self::assertTrue($this->usd(1)->isPositive());
         self::assertTrue($this->usd(-1)->isNegative());
         self::assertFalse($this->usd(0)->isPositive());
+        self::assertFalse($this->usd(0)->isNegative());
     }
 
     #[Test]
@@ -44,6 +45,25 @@ final class MoneyTest extends TestCase
         self::assertTrue($this->usd(100)->isGreaterThan($this->usd(50)));
         self::assertTrue($this->usd(50)->isLessThan($this->usd(100)));
         self::assertTrue($this->usd(50)->isGreaterThanOrEqual($this->usd(50)));
+        self::assertFalse($this->usd(50)->isGreaterThan($this->usd(50)));
+        self::assertFalse($this->usd(50)->isLessThan($this->usd(50)));
+    }
+
+    #[Test]
+    public function everyComparisonRejectsAForeignCurrency(): void
+    {
+        $eur = Money::of(50, Currency::of('EUR'));
+
+        $rejected = [];
+        foreach (['isGreaterThan', 'isGreaterThanOrEqual', 'isLessThan'] as $comparison) {
+            try {
+                $this->usd(100)->{$comparison}($eur);
+            } catch (CurrencyMismatch) {
+                $rejected[] = $comparison;
+            }
+        }
+
+        self::assertSame(['isGreaterThan', 'isGreaterThanOrEqual', 'isLessThan'], $rejected);
     }
 
     #[Test]
@@ -64,5 +84,12 @@ final class MoneyTest extends TestCase
     {
         $this->expectException(CurrencyMismatch::class);
         $this->usd(100)->isGreaterThan(Money::of(50, Currency::of('EUR')));
+    }
+
+    #[Test]
+    public function subtractingDifferentCurrenciesIsRejected(): void
+    {
+        $this->expectException(CurrencyMismatch::class);
+        $this->usd(100)->subtract(Money::of(50, Currency::of('EUR')));
     }
 }

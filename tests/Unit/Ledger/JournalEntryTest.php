@@ -61,6 +61,9 @@ final class JournalEntryTest extends TestCase
     public function rejectsFewerThanTwoLegs(): void
     {
         $this->expectException(UnbalancedEntry::class);
+        // Pin the *reason*: a single debit leg is also unbalanced, so without the
+        // message this test cannot tell the leg-count guard from the balance one.
+        $this->expectExceptionMessage('at least two legs');
         JournalEntry::post(JournalEntryId::generate(), Leg::debit($this->ref('a'), $this->usd(100)));
     }
 
@@ -68,11 +71,23 @@ final class JournalEntryTest extends TestCase
     public function rejectsAnUnbalancedEntry(): void
     {
         $this->expectException(UnbalancedEntry::class);
+        // Net is debits minus credits: +10, sign included.
+        $this->expectExceptionMessage('unbalanced for USD: net 10');
         JournalEntry::post(
             JournalEntryId::generate(),
             Leg::debit($this->ref('a'), $this->usd(100)),
             Leg::credit($this->ref('b'), $this->usd(90)),
         );
+    }
+
+    #[Test]
+    public function legOfBuildsEitherDirection(): void
+    {
+        $debit = Leg::of($this->ref('a'), LegDirection::Debit, $this->usd(100));
+        $credit = Leg::of($this->ref('b'), LegDirection::Credit, $this->usd(100));
+
+        self::assertSame(LegDirection::Debit, $debit->direction);
+        self::assertSame(LegDirection::Credit, $credit->direction);
     }
 
     #[Test]

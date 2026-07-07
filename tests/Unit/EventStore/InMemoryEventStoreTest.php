@@ -101,6 +101,30 @@ final class InMemoryEventStoreTest extends TestCase
     }
 
     #[Test]
+    public function readFromStopsExactlyAtTheLimit(): void
+    {
+        $store = $this->store();
+        $stream = StreamId::of('counter', 'c-1');
+        $store->append($stream, 0, [new SomethingHappened('a', 1), new SomethingHappened('b', 2), new SomethingHappened('c', 3)]);
+
+        self::assertCount(2, $store->readFrom(0, 2));
+    }
+
+    #[Test]
+    public function readFromDefaultsToABatchOfOneHundred(): void
+    {
+        $store = $this->store();
+        $stream = StreamId::of('counter', 'c-1');
+        $events = [];
+        for ($i = 1; $i <= 101; ++$i) {
+            $events[] = new SomethingHappened('e' . $i, $i);
+        }
+        $store->append($stream, 0, $events);
+
+        self::assertCount(100, $store->readFrom(0));
+    }
+
+    #[Test]
     public function unknownEventTypeIsRejected(): void
     {
         // Registry without the event registered.
