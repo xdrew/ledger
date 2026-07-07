@@ -16,4 +16,6 @@ final class Metric
     public const HOLDS_ACTIVE = 'holds_active';
     public const OUTBOX_PENDING = 'outbox_pending';
     public const PROJECTION_LAG_SECONDS = 'projection_lag_seconds';
+    public const HTTP_REQUESTS_TOTAL = 'http_requests_total';
+    public const HTTP_REQUEST_DURATION_SECONDS = 'http_request_duration_seconds';
 }
