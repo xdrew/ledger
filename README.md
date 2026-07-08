@@ -13,9 +13,9 @@ change-by-change plan.
 > bus, HTTP API (RoadRunner), observability, deployment (compose + Helm), CI. Docs:
 > [ADRs](docs/adr/) · [design](docs/design.md) · [runbook](docs/runbook.md) · [SLOs](docs/slo.md).
 
-> **Live demo:** <https://showcase.monadungeon.xyz> — the interactive playground against a
+> **Live demo:** <https://ledger.avelent.work> — the interactive playground against a
 > Kubernetes (k3s + this repo's Helm chart) deployment, auto-deployed by CI from `main`;
-> the **Ledger Core** Grafana dashboard is at [/grafana](https://showcase.monadungeon.xyz/grafana/)
+> the **Ledger Core** Grafana dashboard is at [/grafana](https://ledger.avelent.work/grafana/)
 > (read-only). API key for requests: `local_dev_api_key`.
 
 ## Stack

@@ -249,7 +249,7 @@ jobs:
       cancel-in-progress: false
     environment:
       name: showcase
-      url: https://showcase.monadungeon.xyz
+      url: https://ledger.avelent.work
     steps:
       - name: Deploy over SSH
         env:
@@ -263,4 +263,4 @@ jobs:
 
       - name: Showcase is serving the new revision
         run: |
-          curl -fsS -m 10 https://showcase.monadungeon.xyz/readyz | jq -e '.status == "ready"'
+          curl -fsS -m 10 https://ledger.avelent.work/readyz | jq -e '.status == "ready"'
