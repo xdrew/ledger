@@ -1,8 +1,17 @@
 name: CI
 
 on:
+  # Docs-only and Claude-tooling changes don't affect the build or the deploy,
+  # so skip the whole pipeline for them. A mixed commit (docs + code) still runs,
+  # since paths-ignore only skips when *every* changed file matches.
   push:
+    paths-ignore:
+      - '.claude/**'
+      - 'docs/**'
   pull_request:
+    paths-ignore:
+      - '.claude/**'
+      - 'docs/**'
 
 jobs:
   # Stage 1 (brief §7.1–§7.5 + helm validation): fail-fast quality gate.
