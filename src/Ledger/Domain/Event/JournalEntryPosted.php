@@ -11,14 +11,14 @@ use App\SharedKernel\Event\DomainEvent;
 use App\SharedKernel\Money\Currency;
 use App\SharedKernel\Money\Money;
 
-final class JournalEntryPosted implements DomainEvent
+final readonly class JournalEntryPosted implements DomainEvent
 {
     /**
      * @param list<Leg> $legs
      */
     public function __construct(
-        public readonly string $entryId,
-        public readonly array $legs,
+        public string $entryId,
+        public array $legs,
     ) {}
 
     public function toPayload(): array

@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
 
 final class InMemoryIdempotencyStoreTest extends TestCase
 {
-    private const ROUTE = 'POST /transfers';
+    private const string ROUTE = 'POST /transfers';
 
     private FixedClock $clock;
 

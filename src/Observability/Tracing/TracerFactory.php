@@ -54,7 +54,7 @@ final readonly class TracerFactory
 
     private function otlpExporter(): OtlpSpanExporter
     {
-        $transport = (new OtlpHttpTransportFactory())->create(
+        $transport = new OtlpHttpTransportFactory()->create(
             rtrim($this->otlpEndpoint, '/') . '/v1/traces',
             'application/x-protobuf',
             timeout: 1.0,

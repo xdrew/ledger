@@ -51,7 +51,7 @@ final class EventSourcedLedgerRepositoryTest extends KernelTestCase
         $this->connection->executeStatement('TRUNCATE events RESTART IDENTITY');
 
         $registry = new EventTypeRegistry();
-        (new LedgerEventTypes())->registerInto($registry);
+        new LedgerEventTypes()->registerInto($registry);
         $store = new DbalEventStore($this->connection, new EventSerializer($registry), new SystemClock());
         $this->repository = new EventSourcedLedgerRepository($store);
     }

@@ -8,11 +8,11 @@ namespace App\EventStore;
  * Identifies an event stream: a stream type (the aggregate kind, e.g. "account")
  * plus the aggregate's own id. The pair is the unit of optimistic concurrency.
  */
-final class StreamId
+final readonly class StreamId
 {
     private function __construct(
-        public readonly string $type,
-        public readonly string $id,
+        public string $type,
+        public string $id,
     ) {}
 
     public static function of(string $type, string $id): self

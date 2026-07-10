@@ -7,9 +7,9 @@ namespace App\Idempotency;
 /**
  * Configurable retention for completed idempotency keys.
  */
-final class Ttl
+final readonly class Ttl
 {
-    private function __construct(public readonly int $seconds) {}
+    private function __construct(public int $seconds) {}
 
     public static function ofSeconds(int $seconds): self
     {

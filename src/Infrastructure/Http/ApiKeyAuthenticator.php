@@ -24,8 +24,8 @@ use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface
  */
 final class ApiKeyAuthenticator extends AbstractAuthenticator implements AuthenticationEntryPointInterface
 {
-    public const HEADER = 'X-Api-Key';
-    private const IDENTITY = 'api-client';
+    public const string HEADER = 'X-Api-Key';
+    private const string IDENTITY = 'api-client';
 
     public function __construct(private readonly string $apiKey) {}
 

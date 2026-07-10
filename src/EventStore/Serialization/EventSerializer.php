@@ -14,12 +14,12 @@ use App\SharedKernel\Event\DomainEvent;
  * {@see UpcasterChain} before `fromPayload` (upcast-on-read, ADR-006); payloads
  * already current bypass the chain.
  */
-final class EventSerializer
+final readonly class EventSerializer
 {
-    private readonly UpcasterChain $upcasters;
+    private UpcasterChain $upcasters;
 
     public function __construct(
-        private readonly EventTypeRegistry $registry,
+        private EventTypeRegistry $registry,
         ?UpcasterChain $upcasters = null,
     ) {
         $this->upcasters = $upcasters ?? new UpcasterChain();

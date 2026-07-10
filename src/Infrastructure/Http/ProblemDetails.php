@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class ProblemDetails
 {
-    public const CONTENT_TYPE = 'application/problem+json';
+    public const string CONTENT_TYPE = 'application/problem+json';
 
     /**
      * @param list<array{field: string, message: string}> $errors

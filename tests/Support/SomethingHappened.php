@@ -9,13 +9,13 @@ use App\SharedKernel\Event\DomainEvent;
 /**
  * A trivial domain event used to exercise the event store and aggregate root.
  */
-final class SomethingHappened implements DomainEvent
+final readonly class SomethingHappened implements DomainEvent
 {
-    public const TYPE = 'test.something_happened';
+    public const string TYPE = 'test.something_happened';
 
     public function __construct(
-        public readonly string $what,
-        public readonly int $amount,
+        public string $what,
+        public int $amount,
     ) {}
 
     public function toPayload(): array

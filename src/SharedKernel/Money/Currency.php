@@ -8,9 +8,9 @@ namespace App\SharedKernel\Money;
  * ISO-4217-style currency code (three uppercase letters). Single-currency
  * accounts means every monetary amount carries exactly one of these.
  */
-final class Currency
+final readonly class Currency
 {
-    private function __construct(public readonly string $code) {}
+    private function __construct(public string $code) {}
 
     public static function of(string $code): self
     {

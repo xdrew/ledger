@@ -9,9 +9,9 @@ use Ramsey\Uuid\Uuid;
 /**
  * Identity of an account aggregate (and the id of its event stream).
  */
-final class AccountId
+final readonly class AccountId
 {
-    private function __construct(public readonly string $value) {}
+    private function __construct(public string $value) {}
 
     public static function generate(): self
     {

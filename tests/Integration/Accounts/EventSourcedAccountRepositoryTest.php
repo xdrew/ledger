@@ -51,7 +51,7 @@ final class EventSourcedAccountRepositoryTest extends KernelTestCase
         // Build the repository over a registry configured by the same registrar
         // used in DI, so the test exercises the real serialization wiring.
         $registry = new EventTypeRegistry();
-        (new AccountEventTypes())->registerInto($registry);
+        new AccountEventTypes()->registerInto($registry);
         $store = new DbalEventStore($this->connection, new EventSerializer($registry), new SystemClock());
         $this->repository = new EventSourcedAccountRepository($store);
     }

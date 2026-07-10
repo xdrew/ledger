@@ -19,7 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
  */
 final class OpenApiGenerator
 {
-    private const SECURITY_SCHEME = 'apiKey';
+    private const string SECURITY_SCHEME = 'apiKey';
 
     /** @var array<string, array<string, mixed>> */
     private array $paths = [];
@@ -278,7 +278,7 @@ final class OpenApiGenerator
                 continue;
             }
             $name = $type->getName();
-            if (class_exists($name) && (new \ReflectionClass($name))->implementsInterface(\JsonSerializable::class)) {
+            if (class_exists($name) && new \ReflectionClass($name)->implementsInterface(\JsonSerializable::class)) {
                 return $name;
             }
         }

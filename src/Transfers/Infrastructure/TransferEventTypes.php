@@ -21,7 +21,7 @@ final class TransferEventTypes implements EventTypeProvider
     /**
      * @var array<string, class-string<DomainEvent>>
      */
-    private const TYPES = [
+    private const array TYPES = [
         'transfers.transfer_initiated' => TransferInitiated::class,
         'transfers.transfer_held' => TransferHeld::class,
         'transfers.transfer_posted' => TransferPosted::class,

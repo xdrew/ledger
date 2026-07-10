@@ -18,9 +18,9 @@ use Doctrine\DBAL\ParameterType;
 /**
  * Projects account postings/holds into the ordered `account_statement` read model.
  */
-final class AccountStatementProjector implements Projector
+final readonly class AccountStatementProjector implements Projector
 {
-    public function __construct(private readonly Connection $connection) {}
+    public function __construct(private Connection $connection) {}
 
     public function handles(RecordedEvent $event): bool
     {

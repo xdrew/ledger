@@ -37,7 +37,7 @@ final class UpcastingTest extends KernelTestCase
         $this->connection = $connection;
 
         if (!self::$migrated) {
-            $tester = new CommandTester((new Application($kernel))->find('doctrine:migrations:migrate'));
+            $tester = new CommandTester(new Application($kernel)->find('doctrine:migrations:migrate'));
             $tester->execute(['--no-interaction' => true], ['interactive' => false]);
             $tester->assertCommandIsSuccessful();
             self::$migrated = true;

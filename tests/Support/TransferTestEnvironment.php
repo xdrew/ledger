@@ -26,34 +26,31 @@ use App\Transfers\Infrastructure\TransferEventTypes;
  * Wires the accounts, ledger and transfers contexts over a shared event store so
  * the transfer saga can be exercised end to end in tests.
  */
-final class TransferTestEnvironment
+final readonly class TransferTestEnvironment
 {
-    public readonly EventSourcedAccountRepository $accounts;
+    public EventSourcedLedgerRepository $ledger;
 
-    public readonly EventSourcedLedgerRepository $ledger;
+    public EventSourcedTransferRepository $transfers;
 
-    public readonly EventSourcedTransferRepository $transfers;
+    public TransferOrchestrator $orchestrator;
 
-    public readonly TransferOrchestrator $orchestrator;
+    public InMemoryMetrics $metrics;
 
-    public readonly InMemoryMetrics $metrics;
-
-    public function __construct(EventStore $store, EventSourcedAccountRepository $accounts)
+    public function __construct(EventStore $store, public EventSourcedAccountRepository $accounts)
     {
-        $this->accounts = $accounts;
         $this->ledger = new EventSourcedLedgerRepository($store);
         $this->transfers = new EventSourcedTransferRepository($store);
         $this->metrics = new InMemoryMetrics();
-        $posting = new JournalPostingService(new AccountRepositoryStatusReader($accounts));
-        $this->orchestrator = new TransferOrchestrator($this->transfers, $accounts, $this->ledger, $posting, $this->metrics);
+        $posting = new JournalPostingService(new AccountRepositoryStatusReader($this->accounts));
+        $this->orchestrator = new TransferOrchestrator($this->transfers, $this->accounts, $this->ledger, $posting, $this->metrics);
     }
 
     public static function registry(): EventTypeRegistry
     {
         $registry = new EventTypeRegistry();
-        (new AccountEventTypes())->registerInto($registry);
-        (new LedgerEventTypes())->registerInto($registry);
-        (new TransferEventTypes())->registerInto($registry);
+        new AccountEventTypes()->registerInto($registry);
+        new LedgerEventTypes()->registerInto($registry);
+        new TransferEventTypes()->registerInto($registry);
 
         return $registry;
     }

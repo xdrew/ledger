@@ -15,16 +15,16 @@ use App\Outbox\Dbal\RelayCheckpoint;
  * checkpoint — so the checkpoint never moves past an unpublished event (no loss)
  * and a crash re-publishes at most the in-flight event (at-least-once).
  */
-final class OutboxRelay
+final readonly class OutboxRelay
 {
-    private const BATCH_SIZE = 500;
+    private const int BATCH_SIZE = 500;
 
-    private readonly Tracer $tracer;
+    private Tracer $tracer;
 
     public function __construct(
-        private readonly EventStore $eventStore,
-        private readonly EventPublisher $publisher,
-        private readonly RelayCheckpoint $checkpoint,
+        private EventStore $eventStore,
+        private EventPublisher $publisher,
+        private RelayCheckpoint $checkpoint,
         ?Tracer $tracer = null,
     ) {
         $this->tracer = $tracer ?? new NoopTracer();

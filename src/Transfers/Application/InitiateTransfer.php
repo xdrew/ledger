@@ -11,13 +11,13 @@ use App\Transfers\Domain\TransferId;
 /**
  * Input to start a transfer.
  */
-final class InitiateTransfer
+final readonly class InitiateTransfer
 {
     public function __construct(
-        public readonly TransferId $transferId,
-        public readonly AccountId $sourceAccountId,
-        public readonly AccountId $destinationAccountId,
-        public readonly Money $amount,
-        public readonly ?TransferId $reversalOf = null,
+        public TransferId $transferId,
+        public AccountId $sourceAccountId,
+        public AccountId $destinationAccountId,
+        public Money $amount,
+        public ?TransferId $reversalOf = null,
     ) {}
 }

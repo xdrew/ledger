@@ -60,7 +60,7 @@ final class ProjectionsTest extends KernelTestCase
         $this->connection->executeStatement('TRUNCATE account_balances, account_statement, projection_checkpoints');
 
         $registry = new EventTypeRegistry();
-        (new AccountEventTypes())->registerInto($registry);
+        new AccountEventTypes()->registerInto($registry);
         $store = new DbalEventStore($this->connection, new EventSerializer($registry), new SystemClock());
         $this->accounts = new EventSourcedAccountRepository($store);
         $checkpoints = new CheckpointStore($this->connection);

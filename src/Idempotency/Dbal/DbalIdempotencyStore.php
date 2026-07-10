@@ -24,17 +24,17 @@ use Doctrine\DBAL\ParameterType;
  * exactly one concurrent caller wins. An existing row is then classified
  * (expired-or-stale-reclaim / mismatch / in-progress / completed).
  */
-final class DbalIdempotencyStore implements IdempotencyStore
+final readonly class DbalIdempotencyStore implements IdempotencyStore
 {
-    private const STATUS_IN_PROGRESS = 'in_progress';
-    private const STATUS_COMPLETED = 'completed';
-    private const TS = 'Y-m-d H:i:s.uP';
-    private const MAX_ATTEMPTS = 3;
+    private const string STATUS_IN_PROGRESS = 'in_progress';
+    private const string STATUS_COMPLETED = 'completed';
+    private const string TS = 'Y-m-d H:i:s.uP';
+    private const int MAX_ATTEMPTS = 3;
 
     public function __construct(
-        private readonly Connection $connection,
-        private readonly Clock $clock,
-        private readonly Ttl $ttl,
+        private Connection $connection,
+        private Clock $clock,
+        private Ttl $ttl,
     ) {}
 
     public function begin(IdempotencyKey $key, string $route, string $requestHash): BeginOutcome

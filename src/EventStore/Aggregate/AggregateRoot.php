@@ -45,7 +45,7 @@ abstract class AggregateRoot
      */
     final public static function reconstituteFromHistory(DomainEvent ...$events): static
     {
-        $aggregate = (new \ReflectionClass(static::class))->newInstanceWithoutConstructor();
+        $aggregate = new \ReflectionClass(static::class)->newInstanceWithoutConstructor();
         foreach ($events as $event) {
             $aggregate->apply($event);
             ++$aggregate->version;

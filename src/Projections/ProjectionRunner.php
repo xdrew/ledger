@@ -16,20 +16,20 @@ use Doctrine\DBAL\Connection;
  * same transaction as the read-model writes, so processing is exactly-once and
  * replay-safe even though balance updates are incremental.
  */
-final class ProjectionRunner
+final readonly class ProjectionRunner
 {
-    private const BATCH_SIZE = 500;
+    private const int BATCH_SIZE = 500;
 
-    private readonly Tracer $tracer;
+    private Tracer $tracer;
 
     /**
      * @param iterable<Projector> $projectors
      */
     public function __construct(
-        private readonly EventStore $eventStore,
-        private readonly Connection $connection,
-        private readonly CheckpointStore $checkpoints,
-        private readonly iterable $projectors,
+        private EventStore $eventStore,
+        private Connection $connection,
+        private CheckpointStore $checkpoints,
+        private iterable $projectors,
         ?Tracer $tracer = null,
     ) {
         $this->tracer = $tracer ?? new NoopTracer();

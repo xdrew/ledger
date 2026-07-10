@@ -12,21 +12,21 @@ namespace App\Projections\Query;
  * inverted ranges are rejected, so a schema-valid-but-wrong translation still
  * cannot produce malformed SQL input.
  */
-final class StatementFilter
+final readonly class StatementFilter
 {
-    public const ENTRY_TYPES = ['deposit', 'hold', 'hold_release', 'debit', 'credit'];
-    public const AGGREGATIONS = ['list', 'sum', 'count'];
+    public const array ENTRY_TYPES = ['deposit', 'hold', 'hold_release', 'debit', 'credit'];
+    public const array AGGREGATIONS = ['list', 'sum', 'count'];
 
     /**
      * @param list<string>|null $entryTypes null = all types
      */
     private function __construct(
-        public readonly ?array $entryTypes,
-        public readonly ?\DateTimeImmutable $dateFrom,
-        public readonly ?\DateTimeImmutable $dateTo,
-        public readonly ?int $minAmount,
-        public readonly ?int $maxAmount,
-        public readonly string $aggregation,
+        public ?array $entryTypes,
+        public ?\DateTimeImmutable $dateFrom,
+        public ?\DateTimeImmutable $dateTo,
+        public ?int $minAmount,
+        public ?int $maxAmount,
+        public string $aggregation,
     ) {}
 
     public static function all(): self

@@ -23,7 +23,7 @@ final class SeedCommandTest extends KernelTestCase
 
         $application = new Application($kernel);
         if (!self::$migrated) {
-            (new CommandTester($application->find('doctrine:migrations:migrate')))
+            new CommandTester($application->find('doctrine:migrations:migrate'))
                 ->execute(['--no-interaction' => true], ['interactive' => false]);
             self::$migrated = true;
         }

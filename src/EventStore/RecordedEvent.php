@@ -12,18 +12,18 @@ use App\SharedKernel\Event\EventId;
  * envelope — identity, stream position (per-stream version), global position,
  * type/schema metadata, timestamp, and correlation/causation metadata.
  */
-final class RecordedEvent
+final readonly class RecordedEvent
 {
     public function __construct(
-        public readonly EventId $eventId,
-        public readonly StreamId $streamId,
-        public readonly int $version,
-        public readonly string $eventType,
-        public readonly int $schemaVersion,
-        public readonly DomainEvent $event,
-        public readonly \DateTimeImmutable $occurredAt,
-        public readonly EventMetadata $metadata,
-        public readonly ?int $globalPosition,
+        public EventId $eventId,
+        public StreamId $streamId,
+        public int $version,
+        public string $eventType,
+        public int $schemaVersion,
+        public DomainEvent $event,
+        public \DateTimeImmutable $occurredAt,
+        public EventMetadata $metadata,
+        public ?int $globalPosition,
     ) {}
 
     public function withGlobalPosition(int $globalPosition): self

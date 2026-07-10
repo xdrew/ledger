@@ -27,21 +27,21 @@ use Doctrine\DBAL\ParameterType;
  * violation, which is translated into {@see ConcurrencyConflict}. Nothing is
  * persisted on conflict.
  */
-final class DbalEventStore implements EventStore
+final readonly class DbalEventStore implements EventStore
 {
-    private const INSERT_SQL = <<<'SQL'
+    private const string INSERT_SQL = <<<'SQL'
         INSERT INTO events
             (event_id, stream_type, stream_id, version, event_type, schema_version, payload, metadata, occurred_at, recorded_at)
         VALUES
             (:event_id, :stream_type, :stream_id, :version, :event_type, :schema_version, CAST(:payload AS JSONB), CAST(:metadata AS JSONB), :occurred_at, :recorded_at)
         SQL;
 
-    private readonly Tracer $tracer;
+    private Tracer $tracer;
 
     public function __construct(
-        private readonly Connection $connection,
-        private readonly EventSerializer $serializer,
-        private readonly Clock $clock,
+        private Connection $connection,
+        private EventSerializer $serializer,
+        private Clock $clock,
         ?Tracer $tracer = null,
     ) {
         $this->tracer = $tracer ?? new NoopTracer();

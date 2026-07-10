@@ -46,9 +46,9 @@ final class CommandBusTest extends TestCase
     protected function setUp(): void
     {
         $registry = new EventTypeRegistry();
-        (new AccountEventTypes())->registerInto($registry);
-        (new LedgerEventTypes())->registerInto($registry);
-        (new TransferEventTypes())->registerInto($registry);
+        new AccountEventTypes()->registerInto($registry);
+        new LedgerEventTypes()->registerInto($registry);
+        new TransferEventTypes()->registerInto($registry);
 
         $clock = new FixedClock(new \DateTimeImmutable('2026-01-01T00:00:00+00:00'));
         $this->store = new InMemoryEventStore($clock, $registry);

@@ -11,9 +11,9 @@ use Doctrine\DBAL\Connection;
 /**
  * Reads the `account_balances` read model.
  */
-final class AccountBalanceView
+final readonly class AccountBalanceView
 {
-    public function __construct(private readonly Connection $connection) {}
+    public function __construct(private Connection $connection) {}
 
     public function find(string $accountId): ?AccountBalance
     {

@@ -10,12 +10,12 @@ use App\SharedKernel\Money\Money;
 /**
  * One side of a journal entry: a debit or credit of a positive amount on an account.
  */
-final class Leg
+final readonly class Leg
 {
     private function __construct(
-        public readonly AccountRef $account,
-        public readonly LegDirection $direction,
-        public readonly Money $amount,
+        public AccountRef $account,
+        public LegDirection $direction,
+        public Money $amount,
     ) {}
 
     public static function of(AccountRef $account, LegDirection $direction, Money $amount): self

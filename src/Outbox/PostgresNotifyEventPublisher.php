@@ -11,11 +11,11 @@ use Doctrine\DBAL\Connection;
  * Publishes events over PostgreSQL LISTEN/NOTIFY (demo transport). Listeners on
  * the channel receive the event id + global position and pull the event.
  */
-final class PostgresNotifyEventPublisher implements EventPublisher
+final readonly class PostgresNotifyEventPublisher implements EventPublisher
 {
     public function __construct(
-        private readonly Connection $connection,
-        private readonly string $channel = 'ledger_events',
+        private Connection $connection,
+        private string $channel = 'ledger_events',
     ) {}
 
     public function publish(RecordedEvent $event): void

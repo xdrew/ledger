@@ -19,11 +19,11 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * on the way out, covering short-circuited responses (e.g. a 400 from the
  * idempotency guard) as well as controller responses.
  */
-final class HttpMetricsListener
+final readonly class HttpMetricsListener
 {
-    private const START_ATTRIBUTE = '_metrics_start';
+    private const string START_ATTRIBUTE = '_metrics_start';
 
-    public function __construct(private readonly Metrics $metrics) {}
+    public function __construct(private Metrics $metrics) {}
 
     #[AsEventListener(event: KernelEvents::REQUEST, priority: 10_000)]
     public function onRequest(RequestEvent $event): void

@@ -21,7 +21,7 @@ final class UpcasterChainTest extends TestCase
      * A captured v1 payload, as rows written before the account_type field
      * existed actually look. Must never be "refreshed" to the current shape.
      */
-    private const CAPTURED_V1_PAYLOAD = ['account_id' => '0195f2c0-0000-7000-8000-000000000001', 'currency' => 'USD'];
+    private const array CAPTURED_V1_PAYLOAD = ['account_id' => '0195f2c0-0000-7000-8000-000000000001', 'currency' => 'USD'];
 
     private function accountsRegistry(): EventTypeRegistry
     {
@@ -85,7 +85,7 @@ final class UpcasterChainTest extends TestCase
             self::upcaster(SomethingHappened::TYPE, 2, static fn(array $payload): array => $payload + ['amount' => 0]),
         ]);
 
-        $event = (new EventSerializer($registry, $chain))->deserialize(SomethingHappened::TYPE, 1, ['text' => 'migrated']);
+        $event = new EventSerializer($registry, $chain)->deserialize(SomethingHappened::TYPE, 1, ['text' => 'migrated']);
 
         self::assertInstanceOf(SomethingHappened::class, $event);
         self::assertSame('migrated', $event->what);
@@ -105,7 +105,7 @@ final class UpcasterChainTest extends TestCase
 
         $this->expectException(MissingUpcaster::class);
         $this->expectExceptionMessage('from schema version 2');
-        (new EventSerializer($registry, $chain))->deserialize(SomethingHappened::TYPE, 1, ['what' => 'x', 'amount' => 1]);
+        new EventSerializer($registry, $chain)->deserialize(SomethingHappened::TYPE, 1, ['what' => 'x', 'amount' => 1]);
     }
 
     #[Test]

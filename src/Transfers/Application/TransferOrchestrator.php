@@ -36,16 +36,16 @@ use App\Transfers\Domain\TransferRepository;
  * settle step only needs to release the hold to compensate (the funds remain in
  * the source's reserved bucket until settlement).
  */
-final class TransferOrchestrator
+final readonly class TransferOrchestrator
 {
-    private const SETTLE_ATTEMPTS = 3;
+    private const int SETTLE_ATTEMPTS = 3;
 
     public function __construct(
-        private readonly TransferRepository $transfers,
-        private readonly AccountRepository $accounts,
-        private readonly LedgerRepository $ledger,
-        private readonly JournalPostingService $posting,
-        private readonly Metrics $metrics,
+        private TransferRepository $transfers,
+        private AccountRepository $accounts,
+        private LedgerRepository $ledger,
+        private JournalPostingService $posting,
+        private Metrics $metrics,
     ) {}
 
     public function initiate(InitiateTransfer $command): Transfer

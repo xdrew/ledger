@@ -37,7 +37,7 @@ final class GenerateOpenApiCommand extends Command
         $formatOption = $input->getOption('format');
         $format = \is_string($formatOption) ? $formatOption : 'json';
 
-        $spec = (new OpenApiGenerator())->generate($this->projectDir . '/src/Api');
+        $spec = new OpenApiGenerator()->generate($this->projectDir . '/src/Api');
 
         $rendered = match ($format) {
             'yaml' => Yaml::dump($spec, 10, 2, Yaml::DUMP_OBJECT_AS_MAP),

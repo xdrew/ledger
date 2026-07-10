@@ -12,9 +12,9 @@ use Doctrine\DBAL\Connection;
 /**
  * Reads the ordered `account_statement` read model.
  */
-final class AccountStatementView
+final readonly class AccountStatementView
 {
-    public function __construct(private readonly Connection $connection) {}
+    public function __construct(private Connection $connection) {}
 
     /**
      * @return list<StatementEntry>

@@ -17,11 +17,11 @@ use App\SharedKernel\Event\DomainEvent;
 /**
  * Persists accounts as event streams (stream type "account") via the event store.
  */
-final class EventSourcedAccountRepository implements AccountRepository
+final readonly class EventSourcedAccountRepository implements AccountRepository
 {
-    private const STREAM_TYPE = 'account';
+    private const string STREAM_TYPE = 'account';
 
-    public function __construct(private readonly EventStore $eventStore) {}
+    public function __construct(private EventStore $eventStore) {}
 
     public function load(AccountId $id): Account
     {

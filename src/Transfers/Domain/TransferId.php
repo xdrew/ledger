@@ -9,9 +9,9 @@ use Ramsey\Uuid\Uuid;
 /**
  * Identity of a transfer (and the id of its saga event stream).
  */
-final class TransferId
+final readonly class TransferId
 {
-    private function __construct(public readonly string $value) {}
+    private function __construct(public string $value) {}
 
     public static function generate(): self
     {

@@ -23,7 +23,7 @@ use PHPUnit\Framework\TestCase;
 final class TrialBalanceTest extends TestCase
 {
     /** @var list<string> */
-    private const ACCOUNTS = ['acc-1', 'acc-2', 'acc-3', 'acc-4', 'acc-5'];
+    private const array ACCOUNTS = ['acc-1', 'acc-2', 'acc-3', 'acc-4', 'acc-5'];
 
     #[Test]
     public function manyRandomBalancedEntriesReconcileToGlobalZero(): void
@@ -31,7 +31,7 @@ final class TrialBalanceTest extends TestCase
         // Property test: every generated entry is balanced by construction, so
         // the global net is zero for any random sequence (no seed needed).
         $registry = new EventTypeRegistry();
-        (new LedgerEventTypes())->registerInto($registry);
+        new LedgerEventTypes()->registerInto($registry);
         $store = new InMemoryEventStore(new FixedClock(new \DateTimeImmutable('2026-01-01T00:00:00+00:00')), $registry);
         $repository = new EventSourcedLedgerRepository($store);
 

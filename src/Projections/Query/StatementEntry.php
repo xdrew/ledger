@@ -9,13 +9,13 @@ use App\SharedKernel\Money\Money;
 /**
  * Read-model view of a single account statement entry.
  */
-final class StatementEntry
+final readonly class StatementEntry
 {
     public function __construct(
-        public readonly string $accountId,
-        public readonly int $globalPosition,
-        public readonly string $entryType,
-        public readonly Money $amount,
-        public readonly \DateTimeImmutable $occurredAt,
+        public string $accountId,
+        public int $globalPosition,
+        public string $entryType,
+        public Money $amount,
+        public \DateTimeImmutable $occurredAt,
     ) {}
 }

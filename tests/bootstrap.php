@@ -12,4 +12,4 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 // and KernelTestCase (which prefers $_ENV) would boot the wrong environment.
 $_SERVER['APP_ENV'] = $_ENV['APP_ENV'] = 'test';
 
-(new Dotenv())->bootEnv(dirname(__DIR__) . '/.env');
+new Dotenv()->bootEnv(dirname(__DIR__) . '/.env');

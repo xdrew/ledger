@@ -8,12 +8,12 @@ namespace App\EventStore;
  * Cross-cutting metadata carried alongside an event: correlation and causation
  * ids propagated from the originating command into events, logs, and traces.
  */
-final class EventMetadata
+final readonly class EventMetadata
 {
     public function __construct(
-        public readonly ?string $correlationId = null,
-        public readonly ?string $causationId = null,
-        public readonly ?string $traceparent = null,
+        public ?string $correlationId = null,
+        public ?string $causationId = null,
+        public ?string $traceparent = null,
     ) {}
 
     public static function none(): self

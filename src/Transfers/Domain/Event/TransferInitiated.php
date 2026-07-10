@@ -6,17 +6,17 @@ namespace App\Transfers\Domain\Event;
 
 use App\SharedKernel\Event\DomainEvent;
 
-final class TransferInitiated implements DomainEvent
+final readonly class TransferInitiated implements DomainEvent
 {
     use DecodesPayload;
 
     public function __construct(
-        public readonly string $transferId,
-        public readonly string $sourceAccountId,
-        public readonly string $destinationAccountId,
-        public readonly int $amountMinorUnits,
-        public readonly string $currency,
-        public readonly ?string $reversalOf,
+        public string $transferId,
+        public string $sourceAccountId,
+        public string $destinationAccountId,
+        public int $amountMinorUnits,
+        public string $currency,
+        public ?string $reversalOf,
     ) {}
 
     public function toPayload(): array

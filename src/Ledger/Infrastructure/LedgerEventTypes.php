@@ -18,7 +18,7 @@ final class LedgerEventTypes implements EventTypeProvider
     /**
      * @var array<string, class-string<DomainEvent>>
      */
-    private const TYPES = [
+    private const array TYPES = [
         'ledger.journal_entry_posted' => JournalEntryPosted::class,
     ];
 

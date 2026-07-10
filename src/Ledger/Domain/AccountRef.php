@@ -8,9 +8,9 @@ namespace App\Ledger\Domain;
  * Opaque reference to an account a leg posts against. Keeps the ledger context
  * decoupled from Accounts\Domain — only the id string is shared.
  */
-final class AccountRef
+final readonly class AccountRef
 {
-    private function __construct(public readonly string $value) {}
+    private function __construct(public string $value) {}
 
     public static function fromString(string $value): self
     {

@@ -29,26 +29,26 @@ use Thesis\MessageBus\Metadata\Kind;
  *
  * @phpstan-type Endpoint non-empty-string
  */
-final class CommandBus
+final readonly class CommandBus
 {
-    private const ORIGIN = 'ledger';
-    private const ENDPOINT = 'ledger';
+    private const string ORIGIN = 'ledger';
+    private const string ENDPOINT = 'ledger';
 
     /** @var Handlers<NoTransaction> */
-    private readonly Handlers $handlers;
+    private Handlers $handlers;
 
-    private readonly Tracer $tracer;
+    private Tracer $tracer;
 
     public function __construct(
         OpenAccountHandler $openAccount,
         DepositFundsHandler $depositFunds,
         InitiateTransferHandler $initiateTransfer,
-        private readonly Clock $clock,
-        private readonly ?CorrelationContext $correlation = null,
+        private Clock $clock,
+        private ?CorrelationContext $correlation = null,
         ?Tracer $tracer = null,
     ) {
         $this->tracer = $tracer ?? new NoopTracer();
-        $this->handlers = (new Handlers())
+        $this->handlers = new Handlers()
             ->with(OpenAccount::class, $openAccount(...))
             ->with(DepositFunds::class, $depositFunds(...))
             ->with(InitiateTransfer::class, $initiateTransfer(...));

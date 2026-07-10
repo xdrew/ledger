@@ -10,15 +10,15 @@ use App\SharedKernel\Event\DomainEvent;
  * Schema v2: adds `account_type` (default "standard"). Rows stored at v1 are
  * brought to this shape by the AccountOpenedV1ToV2 upcaster (infrastructure).
  */
-final class AccountOpened implements DomainEvent
+final readonly class AccountOpened implements DomainEvent
 {
     use DecodesPayload;
-    public const DEFAULT_ACCOUNT_TYPE = 'standard';
+    public const string DEFAULT_ACCOUNT_TYPE = 'standard';
 
     public function __construct(
-        public readonly string $accountId,
-        public readonly string $currency,
-        public readonly string $accountType = self::DEFAULT_ACCOUNT_TYPE,
+        public string $accountId,
+        public string $currency,
+        public string $accountType = self::DEFAULT_ACCOUNT_TYPE,
     ) {}
 
     public function toPayload(): array

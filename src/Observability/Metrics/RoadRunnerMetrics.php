@@ -13,9 +13,9 @@ use Spiral\RoadRunner\Metrics\MetricsInterface;
  * which a per-process PHP client could not do. The business collectors are
  * declared once per worker on construction (declaration is idempotent-guarded).
  */
-final class RoadRunnerMetrics implements Metrics
+final readonly class RoadRunnerMetrics implements Metrics
 {
-    public function __construct(private readonly MetricsInterface $metrics)
+    public function __construct(private MetricsInterface $metrics)
     {
         $this->declare(Metric::TRANSFERS_TOTAL, Collector::counter()->withHelp('Transfers by terminal status.')->withLabels('status'));
         $this->declare(Metric::JOURNAL_ENTRIES_TOTAL, Collector::counter()->withHelp('Journal entries posted.'));

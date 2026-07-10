@@ -17,11 +17,11 @@ use App\SharedKernel\Event\DomainEvent;
 /**
  * Persists journal entries as event streams (stream type "journal_entry").
  */
-final class EventSourcedLedgerRepository implements LedgerRepository
+final readonly class EventSourcedLedgerRepository implements LedgerRepository
 {
-    private const STREAM_TYPE = 'journal_entry';
+    private const string STREAM_TYPE = 'journal_entry';
 
-    public function __construct(private readonly EventStore $eventStore) {}
+    public function __construct(private EventStore $eventStore) {}
 
     public function save(JournalEntry $entry, ?EventMetadata $metadata = null): void
     {

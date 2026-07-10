@@ -33,9 +33,9 @@ use App\SharedKernel\Money\Currency;
  * destination then passed the posting, the source got debited, and the
  * destination credit failed deterministically with no compensation.)
  */
-final class AccountRepositoryStatusReader implements AccountStatusReader
+final readonly class AccountRepositoryStatusReader implements AccountStatusReader
 {
-    public function __construct(private readonly AccountRepository $accounts) {}
+    public function __construct(private AccountRepository $accounts) {}
 
     public function assertPostable(AccountRef $account, Currency $currency): void
     {

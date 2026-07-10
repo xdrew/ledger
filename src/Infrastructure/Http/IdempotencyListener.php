@@ -27,15 +27,15 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * instead, so a retry gets a fresh attempt). Runs after the firewall so
  * unauthenticated requests never reserve a key.
  */
-final class IdempotencyListener
+final readonly class IdempotencyListener
 {
-    private const HEADER = 'Idempotency-Key';
-    private const ATTRIBUTE = '_idempotency';
-    private const MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+    private const string HEADER = 'Idempotency-Key';
+    private const string ATTRIBUTE = '_idempotency';
+    private const array MUTATING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
     public function __construct(
-        private readonly IdempotencyStore $store,
-        private readonly Metrics $metrics,
+        private IdempotencyStore $store,
+        private Metrics $metrics,
     ) {}
 
     #[AsEventListener(event: KernelEvents::REQUEST, priority: 4)]

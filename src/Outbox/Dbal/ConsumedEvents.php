@@ -10,9 +10,9 @@ use Doctrine\DBAL\Connection;
  * Per-consumer idempotency guard. A consumer marks an event consumed before
  * applying its effect; a re-delivered event is recognised and skipped.
  */
-final class ConsumedEvents
+final readonly class ConsumedEvents
 {
-    public function __construct(private readonly Connection $connection) {}
+    public function __construct(private Connection $connection) {}
 
     /**
      * Atomically record that $consumer is processing $eventId.

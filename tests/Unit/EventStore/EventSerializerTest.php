@@ -65,6 +65,6 @@ final class EventSerializerTest extends TestCase
     public function schemaVersionForAnUnregisteredClassFailsLoudly(): void
     {
         $this->expectException(UnknownEventType::class);
-        (new EventTypeRegistry())->schemaVersionForClass(SomethingHappened::class);
+        new EventTypeRegistry()->schemaVersionForClass(SomethingHappened::class);
     }
 }

@@ -58,7 +58,7 @@ final class OutboxRelayTest extends KernelTestCase
         $this->connection->executeStatement('TRUNCATE projection_checkpoints, consumed_events');
 
         $registry = new EventTypeRegistry();
-        (new AccountEventTypes())->registerInto($registry);
+        new AccountEventTypes()->registerInto($registry);
         $this->store = new DbalEventStore($this->connection, new EventSerializer($registry), new SystemClock());
         $this->accounts = new EventSourcedAccountRepository($this->store);
         $this->checkpoint = new RelayCheckpoint($this->connection);
@@ -79,7 +79,7 @@ final class OutboxRelayTest extends KernelTestCase
         $this->appendEvents(5);
         $publisher = new InMemoryEventPublisher();
 
-        $published = (new OutboxRelay($this->store, $publisher, $this->checkpoint))->relay();
+        $published = new OutboxRelay($this->store, $publisher, $this->checkpoint)->relay();
 
         self::assertSame(5, $published);
         self::assertSame([1, 2, 3, 4, 5], $publisher->publishedPositions());
@@ -104,7 +104,7 @@ final class OutboxRelayTest extends KernelTestCase
         };
 
         try {
-            (new OutboxRelay($this->store, $failing, $this->checkpoint))->relay();
+            new OutboxRelay($this->store, $failing, $this->checkpoint)->relay();
             self::fail('Expected the publish failure to propagate.');
         } catch (\RuntimeException) {
             // expected
@@ -114,7 +114,7 @@ final class OutboxRelayTest extends KernelTestCase
 
         // Retry resumes from the checkpoint — no event lost.
         $publisher = new InMemoryEventPublisher();
-        (new OutboxRelay($this->store, $publisher, $this->checkpoint))->relay();
+        new OutboxRelay($this->store, $publisher, $this->checkpoint)->relay();
         self::assertSame([2, 3], $publisher->publishedPositions());
         self::assertSame(3, $this->checkpoint->position());
     }

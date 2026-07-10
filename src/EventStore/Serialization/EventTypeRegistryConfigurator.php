@@ -9,12 +9,12 @@ namespace App\EventStore\Serialization;
  * {@see EventTypeRegistry}. Wired as the registry's DI configurator so each
  * bounded context contributes its event types without a central list.
  */
-final class EventTypeRegistryConfigurator
+final readonly class EventTypeRegistryConfigurator
 {
     /**
      * @param iterable<EventTypeProvider> $providers
      */
-    public function __construct(private readonly iterable $providers) {}
+    public function __construct(private iterable $providers) {}
 
     public function configure(EventTypeRegistry $registry): void
     {

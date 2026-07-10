@@ -24,7 +24,7 @@ final readonly class OpenApiAction
     #[Route('/openapi.{format}', name: 'api_openapi', methods: ['GET'], requirements: ['format' => 'json|yaml'])]
     public function __invoke(Request $request, string $format = 'json'): Response
     {
-        $spec = (new OpenApiGenerator())->generate($this->projectDir . '/src/Api');
+        $spec = new OpenApiGenerator()->generate($this->projectDir . '/src/Api');
         $spec['servers'] = [['url' => $request->getSchemeAndHttpHost(), 'description' => 'Current server']];
 
         if ($format === 'yaml') {

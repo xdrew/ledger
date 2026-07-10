@@ -22,7 +22,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class DbalIdempotencyStoreTest extends KernelTestCase
 {
-    private const ROUTE = 'POST /transfers';
+    private const string ROUTE = 'POST /transfers';
 
     private static bool $migrated = false;
 

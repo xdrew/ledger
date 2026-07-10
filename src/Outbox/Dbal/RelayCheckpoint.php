@@ -11,11 +11,11 @@ use Doctrine\DBAL\ParameterType;
  * The outbox relay's published-position cursor (a row named "outbox" in the
  * shared checkpoint table).
  */
-final class RelayCheckpoint
+final readonly class RelayCheckpoint
 {
-    private const NAME = 'outbox';
+    private const string NAME = 'outbox';
 
-    public function __construct(private readonly Connection $connection) {}
+    public function __construct(private Connection $connection) {}
 
     public function position(): int
     {

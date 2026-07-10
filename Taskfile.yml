@@ -71,6 +71,16 @@ tasks:
     cmds:
       - "{{.APP}} vendor/bin/phpstan analyse --memory-limit=512M"
 
+  rector:
+    desc: Preview automated refactorings (dry-run, no changes written)
+    cmds:
+      - "{{.APP}} vendor/bin/rector process --dry-run"
+
+  rector:fix:
+    desc: Apply automated refactorings
+    cmds:
+      - "{{.APP}} vendor/bin/rector process"
+
   infection:
     desc: Mutation testing on the domain layer (blocking MSI floor)
     cmds:

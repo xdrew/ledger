@@ -7,9 +7,9 @@ namespace App\Idempotency;
 /**
  * Client-supplied idempotency key (the `Idempotency-Key` header value).
  */
-final class IdempotencyKey
+final readonly class IdempotencyKey
 {
-    private function __construct(public readonly string $value) {}
+    private function __construct(public string $value) {}
 
     public static function fromString(string $value): self
     {

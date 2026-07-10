@@ -44,11 +44,11 @@ final class JournalPostingServiceTest extends TestCase
     {
         /** @var \ArrayObject<int, string> $checked */
         $checked = new \ArrayObject();
-        $reader = new class ($checked) implements AccountStatusReader {
+        $reader = new readonly class ($checked) implements AccountStatusReader {
             /**
              * @param \ArrayObject<int, string> $checked
              */
-            public function __construct(private readonly \ArrayObject $checked) {}
+            public function __construct(private \ArrayObject $checked) {}
 
             public function assertPostable(AccountRef $account, Currency $currency): void
             {
@@ -56,7 +56,7 @@ final class JournalPostingServiceTest extends TestCase
             }
         };
 
-        (new JournalPostingService($reader))->post(
+        new JournalPostingService($reader)->post(
             JournalEntryId::generate(),
             Leg::debit(AccountRef::fromString('a'), $this->usd(100)),
             Leg::credit(AccountRef::fromString('b'), $this->usd(100)),
@@ -91,7 +91,7 @@ final class JournalPostingServiceTest extends TestCase
         };
 
         $this->expectException(FrozenAccountPosting::class);
-        (new JournalPostingService($reader))->post(
+        new JournalPostingService($reader)->post(
             JournalEntryId::generate(),
             Leg::debit(AccountRef::fromString('a'), $this->usd(100)),
             Leg::credit(AccountRef::fromString('frozen'), $this->usd(100)),
@@ -111,7 +111,7 @@ final class JournalPostingServiceTest extends TestCase
         };
 
         $this->expectException(CurrencyMismatchPosting::class);
-        (new JournalPostingService($reader))->post(
+        new JournalPostingService($reader)->post(
             JournalEntryId::generate(),
             Leg::debit(AccountRef::fromString('a'), $this->usd(100)),
             Leg::credit(AccountRef::fromString('b'), $this->usd(100)),
@@ -131,7 +131,7 @@ final class JournalPostingServiceTest extends TestCase
         };
 
         $this->expectException(UnknownAccountPosting::class);
-        (new JournalPostingService($reader))->post(
+        new JournalPostingService($reader)->post(
             JournalEntryId::generate(),
             Leg::debit(AccountRef::fromString('a'), $this->usd(100)),
             Leg::credit(AccountRef::fromString('ghost'), $this->usd(100)),
@@ -140,8 +140,8 @@ final class JournalPostingServiceTest extends TestCase
 
     private function readerRejecting(?string $closedRef): AccountStatusReader
     {
-        return new class ($closedRef) implements AccountStatusReader {
-            public function __construct(private readonly ?string $closedRef) {}
+        return new readonly class ($closedRef) implements AccountStatusReader {
+            public function __construct(private ?string $closedRef) {}
 
             public function assertPostable(AccountRef $account, Currency $currency): void
             {

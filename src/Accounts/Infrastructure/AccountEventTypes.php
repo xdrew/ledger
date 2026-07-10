@@ -26,7 +26,7 @@ final class AccountEventTypes implements EventTypeProvider
     /**
      * @var array<string, class-string<DomainEvent>>
      */
-    private const TYPES = [
+    private const array TYPES = [
         'accounts.account_opened' => AccountOpened::class,
         'accounts.funds_deposited' => FundsDeposited::class,
         'accounts.funds_held' => FundsHeld::class,
@@ -43,7 +43,7 @@ final class AccountEventTypes implements EventTypeProvider
      *
      * @var array<class-string<DomainEvent>, int>
      */
-    private const SCHEMA_VERSIONS = [
+    private const array SCHEMA_VERSIONS = [
         AccountOpened::class => 2,
     ];
 

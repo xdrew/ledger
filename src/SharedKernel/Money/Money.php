@@ -8,11 +8,11 @@ namespace App\SharedKernel\Money;
  * Money as an integer number of minor units (e.g. cents) plus a currency.
  * Never floating point. Arithmetic and comparison refuse mixed currencies.
  */
-final class Money
+final readonly class Money
 {
     private function __construct(
-        public readonly int $minorUnits,
-        public readonly Currency $currency,
+        public int $minorUnits,
+        public Currency $currency,
     ) {}
 
     public static function of(int $minorUnits, Currency $currency): self

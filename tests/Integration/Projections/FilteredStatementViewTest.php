@@ -19,7 +19,7 @@ final class FilteredStatementViewTest extends KernelTestCase
     private Connection $connection;
 
     private AccountStatementView $view;
-    private const ACCOUNT = '0195f2c0-0000-7000-8000-00000000f11e';
+    private const string ACCOUNT = '0195f2c0-0000-7000-8000-00000000f11e';
 
     protected function setUp(): void
     {
@@ -29,7 +29,7 @@ final class FilteredStatementViewTest extends KernelTestCase
         $this->connection = $connection;
 
         if (!self::$migrated) {
-            $tester = new CommandTester((new Application($kernel))->find('doctrine:migrations:migrate'));
+            $tester = new CommandTester(new Application($kernel)->find('doctrine:migrations:migrate'));
             $tester->execute(['--no-interaction' => true], ['interactive' => false]);
             self::$migrated = true;
         }

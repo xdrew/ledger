@@ -10,11 +10,11 @@ use Doctrine\DBAL\ParameterType;
 /**
  * Tracks the projection runner's last processed global position.
  */
-final class CheckpointStore
+final readonly class CheckpointStore
 {
-    private const DEFAULT_NAME = 'default';
+    private const string DEFAULT_NAME = 'default';
 
-    public function __construct(private readonly Connection $connection) {}
+    public function __construct(private Connection $connection) {}
 
     public function position(string $name = self::DEFAULT_NAME): int
     {

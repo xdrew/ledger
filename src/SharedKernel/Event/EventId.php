@@ -10,9 +10,9 @@ use Ramsey\Uuid\Uuid;
  * Globally unique identifier for a single event occurrence. UUIDv7 is used so
  * ids are time-ordered, which keeps index locality good and aids debugging.
  */
-final class EventId
+final readonly class EventId
 {
-    private function __construct(private readonly string $value) {}
+    private function __construct(private string $value) {}
 
     public static function generate(): self
     {

@@ -10,9 +10,9 @@ namespace App\Ledger\Domain;
  * {@see AccountStatusReader} before the structural invariants in
  * {@see JournalEntry::post()}.
  */
-final class JournalPostingService
+final readonly class JournalPostingService
 {
-    public function __construct(private readonly AccountStatusReader $accounts) {}
+    public function __construct(private AccountStatusReader $accounts) {}
 
     public function post(JournalEntryId $id, Leg ...$legs): JournalEntry
     {

@@ -10,10 +10,10 @@ use App\SharedKernel\Money\Currency;
 /**
  * Command: open a new account in a currency.
  */
-final class OpenAccount
+final readonly class OpenAccount
 {
     public function __construct(
-        public readonly AccountId $accountId,
-        public readonly Currency $currency,
+        public AccountId $accountId,
+        public Currency $currency,
     ) {}
 }

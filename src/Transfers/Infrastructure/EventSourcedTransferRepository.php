@@ -17,11 +17,11 @@ use App\Transfers\Domain\TransferRepository;
 /**
  * Persists transfers as event streams (stream type "transfer").
  */
-final class EventSourcedTransferRepository implements TransferRepository
+final readonly class EventSourcedTransferRepository implements TransferRepository
 {
-    private const STREAM_TYPE = 'transfer';
+    private const string STREAM_TYPE = 'transfer';
 
-    public function __construct(private readonly EventStore $eventStore) {}
+    public function __construct(private EventStore $eventStore) {}
 
     public function save(Transfer $transfer, ?EventMetadata $metadata = null): void
     {

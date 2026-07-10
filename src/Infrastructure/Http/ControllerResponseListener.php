@@ -19,7 +19,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
  */
 final class ControllerResponseListener
 {
-    private const STATUS_ATTRIBUTE = '_success_status';
+    private const string STATUS_ATTRIBUTE = '_success_status';
 
     #[AsEventListener(event: KernelEvents::CONTROLLER)]
     public function onController(ControllerEvent $event): void

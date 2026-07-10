@@ -38,7 +38,7 @@ final class RelayCommand extends Command
 
         if ($input->getOption('loop') === true) {
             $interval = $input->getOption('interval');
-            (new WorkerLoop())->run(
+            new WorkerLoop()->run(
                 function (): void {
                     $this->relay->relay();
                 },

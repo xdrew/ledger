@@ -10,10 +10,10 @@ use App\SharedKernel\Money\Money;
 /**
  * Command: deposit funds into an account.
  */
-final class DepositFunds
+final readonly class DepositFunds
 {
     public function __construct(
-        public readonly AccountId $accountId,
-        public readonly Money $amount,
+        public AccountId $accountId,
+        public Money $amount,
     ) {}
 }

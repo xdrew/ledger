@@ -6,13 +6,13 @@ namespace App\Transfers\Domain\Event;
 
 use App\SharedKernel\Event\DomainEvent;
 
-final class TransferFailed implements DomainEvent
+final readonly class TransferFailed implements DomainEvent
 {
     use DecodesPayload;
 
     public function __construct(
-        public readonly string $transferId,
-        public readonly string $reason,
+        public string $transferId,
+        public string $reason,
     ) {}
 
     public function toPayload(): array

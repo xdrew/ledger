@@ -19,9 +19,9 @@ use Doctrine\DBAL\ParameterType;
 /**
  * Projects account events into the `account_balances` read model.
  */
-final class AccountBalancesProjector implements Projector
+final readonly class AccountBalancesProjector implements Projector
 {
-    public function __construct(private readonly Connection $connection) {}
+    public function __construct(private Connection $connection) {}
 
     public function handles(RecordedEvent $event): bool
     {

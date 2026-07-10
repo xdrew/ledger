@@ -30,7 +30,7 @@ final class GaugeCollectorTest extends KernelTestCase
         self::assertInstanceOf(Connection::class, $connection);
 
         if (!self::$migrated) {
-            $tester = new CommandTester((new Application($kernel))->find('doctrine:migrations:migrate'));
+            $tester = new CommandTester(new Application($kernel)->find('doctrine:migrations:migrate'));
             $tester->execute(['--no-interaction' => true], ['interactive' => false]);
             self::$migrated = true;
         }
