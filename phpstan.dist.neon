@@ -5,6 +5,9 @@ parameters:
         - tests
     # PHPUnit lives in its own composer-bin namespace, so it is not in the root
     # autoloader; let PHPStan discover TestCase and friends for analysing tests/.
+    # Scan only phpunit — never the whole tools/vendor: rector ships stub classes
+    # (e.g. a stripped PHPUnit\Framework\TestCase under stubs-rector/) and an
+    # unscoped bundled vendor tree, which would shadow the real symbols.
     scanDirectories:
-        - vendor-bin/tools/vendor
+        - vendor-bin/tools/vendor/phpunit
     tmpDir: var/cache/phpstan
