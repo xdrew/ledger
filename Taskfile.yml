@@ -36,6 +36,12 @@ tasks:
     cmds:
       - "{{.APP}} composer bin all install"
 
+  outdated:
+    desc: Show outdated direct dependencies (root + isolated tools)
+    cmds:
+      - "{{.APP}} composer outdated --direct"
+      - "{{.APP}} composer bin tools outdated --direct"
+
   console:
     desc: Run the Symfony console (pass args after --, e.g. `task console -- debug:container`)
     cmds:
