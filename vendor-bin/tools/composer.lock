@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0e32862d8db2048f8587f964bad00045",
+    "content-hash": "c3bdeb083ddb8b1b5fca83f5eb15b56c",
     "packages": [
         {
             "name": "clue/ndjson-react",
@@ -2031,30 +2031,33 @@
         },
         {
             "name": "phpyh/coding-standard",
-            "version": "2.6.3",
+            "version": "3.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpyh/coding-standard.git",
-                "reference": "e565e41c86cf55607f1f09aa93d5c4b72cbb1a89"
+                "reference": "cee2748782f8762296673430cccd9a55d815bc41"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpyh/coding-standard/zipball/e565e41c86cf55607f1f09aa93d5c4b72cbb1a89",
-                "reference": "e565e41c86cf55607f1f09aa93d5c4b72cbb1a89",
+                "url": "https://api.github.com/repos/phpyh/coding-standard/zipball/cee2748782f8762296673430cccd9a55d815bc41",
+                "reference": "cee2748782f8762296673430cccd9a55d815bc41",
                 "shasum": ""
             },
             "require": {
-                "friendsofphp/php-cs-fixer": "^3.47.1",
-                "php": "^8.1"
+                "friendsofphp/php-cs-fixer": "^3.88.2",
+                "php": "^8.3"
             },
             "require-dev": {
-                "ergebnis/composer-normalize": "^2.43.0",
-                "icanhazstring/composer-unused": "^0.8.11",
-                "maglnet/composer-require-checker": "^4.7.1",
-                "rector/rector": "^1.2.4",
-                "vimeo/psalm": "^5.25.0"
+                "bamarni/composer-bin-plugin": "^1.8.2"
             },
             "type": "library",
+            "extra": {
+                "bamarni-bin": {
+                    "bin-links": false,
+                    "forward-command": true,
+                    "target-directory": "tools"
+                }
+            },
             "autoload": {
                 "psr-4": {
                     "PHPyh\\CodingStandard\\": "src/"
@@ -2079,9 +2082,9 @@
             ],
             "support": {
                 "issues": "https://github.com/phpyh/coding-standard/issues",
-                "source": "https://github.com/phpyh/coding-standard/tree/2.6.3"
+                "source": "https://github.com/phpyh/coding-standard/tree/3.0.1"
             },
-            "time": "2025-06-01T17:45:49+00:00"
+            "time": "2025-10-21T10:30:03+00:00"
         },
         {
             "name": "psr/clock",
