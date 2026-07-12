@@ -13,6 +13,7 @@
     --paper: #EAE4D3;
     --paper-dim: #D8D0B8;
     --faint: #8FA396;
+    --line: #24443A;
     --red: #E0442A;
     --amber: #D9A441;
     --mint: #74C69D;
@@ -47,6 +48,8 @@ button.done::after { content: "\2713"; color: var(--mint); float: right; }
 button.busy::after { content: "\258C\00A0" attr(data-inflight); color: var(--amber); float: right; font-variant-numeric: tabular-nums; animation: blink 1s steps(2, start) infinite; }
 @media (prefers-reduced-motion: reduce) { button.busy::after { animation: none; } }
 @keyframes blink { 50% { opacity: 0; } }
+@keyframes march { to { stroke-dashoffset: -12; } }
+@keyframes settle { from { background: #F3E2B9; } to { background: transparent; } }
 .scenarios .step.done .n { color: var(--mint); border-color: #2E5A48; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--paper); outline-offset: 1px; }
 input[type=text] {
@@ -70,7 +73,7 @@ header {
     gap: 16px;
     flex-wrap: wrap;
     padding: 14px 20px;
-    border-bottom: 1px solid #24443A;
+    border-bottom: 1px solid var(--line);
 }
 header h1 { font-size: 17px; font-weight: 600; letter-spacing: .04em; }
 header h1 .dim { color: var(--faint); font-weight: 400; }
@@ -82,12 +85,11 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
 .layout {
     display: grid;
-    grid-template-columns: 250px minmax(360px, 1fr) minmax(380px, 1.1fr);
+    grid-template-columns: 250px 1fr;
     gap: 0;
     height: calc(100vh - 54px);
 }
 .col { overflow-y: auto; padding: 16px 18px; }
-.col + .col { border-left: 1px solid #24443A; }
 
 /* ---- scenarios ---- */
 .scenarios .step { margin-bottom: 6px; display: flex; gap: 8px; align-items: stretch; }
@@ -117,8 +119,28 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 .nl { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; }
 .nl button { width: auto; align-self: flex-start; padding: 5px 12px; }
 
+/* ---- the tabbed panel (right side) ---- */
+.panel { display: flex; flex-direction: column; min-width: 0; border-left: 1px solid var(--line); height: calc(100vh - 54px); }
+.tabs { display: flex; flex: 0 0 auto; border-bottom: 1px solid var(--line); }
+.tabs button {
+    width: auto; flex: 0 0 auto; border: 0; border-right: 1px solid var(--line);
+    background: var(--ink); color: var(--faint); padding: 9px 18px;
+    text-transform: uppercase; letter-spacing: .12em; font-size: 11.5px; position: relative;
+}
+.tabs button.on { background: var(--ink-2); color: var(--paper); box-shadow: inset 0 -2px 0 var(--mint); }
+.tabs button:hover:not(.on) { background: var(--ink-2); color: var(--paper-dim); }
+.tabs button.dirty::after {
+    content: ""; position: absolute; top: 7px; right: 7px;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--amber);
+}
+.panes { flex: 1 1 auto; min-height: 0; position: relative; }
+.pane { display: none; height: 100%; overflow-y: auto; }
+.pane.on { display: block; }
+.pane.map { padding: 16px 18px; }
+.pane.flow.on { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+
 /* ---- exchange & read models ---- */
-.exchange .call { border: 1px solid #24443A; margin-bottom: 10px; background: var(--ink-2); }
+.exchange .call { border: 1px solid var(--line); margin-bottom: 10px; background: var(--ink-2); }
 .exchange .call summary {
     padding: 7px 10px;
     cursor: pointer;
@@ -134,7 +156,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 .exchange .call .status.s5 { color: var(--red); }
 .exchange .call pre {
     padding: 8px 10px;
-    border-top: 1px solid #24443A;
+    border-top: 1px solid var(--line);
     overflow-x: auto;
     font-size: 13.5px;
     color: var(--paper-dim);
@@ -142,21 +164,20 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     word-break: break-word;
 }
 .exchange .call .note { padding: 4px 10px 8px; color: var(--amber); font-size: 12.5px; }
-.exchange { padding-top: 0; }
 .models {
     position: sticky;
     top: 0;
     z-index: 2;
     background: var(--ink);
-    padding: 16px 0 12px;
+    padding: 0 0 12px;
     margin-bottom: 12px;
-    border-bottom: 1px solid #24443A;
+    border-bottom: 1px solid var(--line);
 }
 .sync { margin-left: 10px; text-transform: none; letter-spacing: .02em; }
 .sync.on { color: var(--amber); }
 .sync.ok { color: var(--mint); opacity: 0; transition: opacity .6s ease 1.4s; }
 .models table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.models th, .models td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #24443A; }
+.models th, .models td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); }
 .models th { color: var(--faint); font-weight: 400; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
 .models td.amt { text-align: right; }
 .models .vsn { color: var(--faint); font-size: 12.5px; }
@@ -165,6 +186,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
 /* ---- the journal tape (signature): paper on the dark console ---- */
 .tape-col { background: var(--paper); color: var(--ink); padding: 0; }
+.pane.journal { background: var(--paper); }
 .tape-col .tape-head {
     position: sticky; top: 0;
     background: var(--paper);
@@ -181,7 +203,6 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     padding: 6px 18px 6px 0;
 }
 .tape .row.fresh { animation: settle 1.6s ease-out; }
-@keyframes settle { from { background: #F3E2B9; } to { background: transparent; } }
 @media (prefers-reduced-motion: reduce) { .tape .row.fresh { animation: none; } }
 .tape .pos {
     text-align: right;
@@ -221,12 +242,11 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 }
 
 /* ---- the money map: accounts are places; money travels visible wires ---- */
-.map { position: relative; height: 188px; border: 1px solid #24443A; background: var(--ink-2); overflow: hidden; }
+.map { position: relative; height: 100%; min-height: 240px; border: 1px solid var(--line); background: var(--ink-2); overflow: hidden; }
 .map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .map line.flow { stroke: #8FA396; stroke-width: 1.5; stroke-dasharray: 7 5; animation: march .45s linear infinite; }
 .map line.flow.bad { stroke: var(--red); }
 @media (prefers-reduced-motion: reduce) { .map line.flow { animation: none; } }
-@keyframes march { to { stroke-dashoffset: -12; } }
 .map .node {
     position: absolute; transform: translate(-50%, -50%);
     border: 1px solid var(--faint); background: var(--ink);
@@ -249,14 +269,169 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 .map .stamp.ok { color: var(--mint); }
 .map .stamp.bad { color: var(--red); }
 .map .stamp.warn { color: var(--amber); }
+.map-cap { font-size: 12.5px; color: var(--faint); margin-top: 10px; }
 
-@media (max-width: 1100px) {
-    .layout { grid-template-columns: 230px 1fr; height: auto; }
-    .tape-col { grid-column: 1 / -1; border-left: none; border-top: 1px solid #24443A; max-height: 60vh; }
+/* =====================================================================
+   event flow — the radial pipeline (a single event through the machine)
+   scoped under #stage so its nodes never collide with the money map
+   ===================================================================== */
+.pane.flow .stage { position: relative; flex: 1 1 auto; min-height: 420px; overflow: hidden;
+    background: radial-gradient(1200px 700px at 50% 50%, #12271F 0%, var(--ink) 62%); }
+#stage svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#stage svg line.rail { stroke: #2C5145; stroke-width: 1.9; }
+#stage svg line.rail.read { stroke-dasharray: 3 6; }
+#stage svg line.rail.back { stroke: #395C4C; stroke-dasharray: 1 6; opacity: .75; }
+#stage svg line.seam { stroke: #24443A; stroke-width: 1; stroke-dasharray: 2 9; opacity: .5; }
+#stage svg line.flow { stroke: var(--mint); stroke-width: 2.6; stroke-dasharray: 10 7; animation: march .45s linear infinite; }
+#stage svg line.flow.write { stroke: var(--paper); }
+#stage svg line.flow.bad { stroke: var(--red); }
+@media (prefers-reduced-motion: reduce) { #stage svg line.flow { animation: none; } }
+
+#stage .node {
+    position: absolute; transform: translate(-50%, -50%);
+    border: 1px solid var(--faint); background: var(--ink);
+    padding: 7px 14px 8px; text-align: center; min-width: 150px; max-width: 240px; z-index: 2;
 }
-@media (max-width: 720px) {
-    .layout { display: block; height: auto; }
-    .col + .col { border-left: none; border-top: 1px solid #24443A; }
+#stage .node .nm { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+#stage .node .sub { font-size: 12px; color: var(--faint); margin-top: 2px; }
+#stage .node .sub.hot { color: var(--amber); }
+#stage .node .sub.ok { color: var(--mint); }
+#stage .node .role { font-size: 14px; font-weight: 600; margin-top: 2px; }
+#stage .node.write { border-color: var(--paper-dim); }
+#stage .node.read { border-style: dashed; }
+#stage .node.ghost { border-style: dashed; background: transparent; color: var(--faint); min-width: 0; }
+
+/* the log hub — paper on the dark console, echoing the journal tape */
+#stage .node.log {
+    background: var(--paper); color: var(--ink); border: 3px solid var(--paper);
+    min-width: 264px; max-width: 320px; padding: 0; overflow: hidden;
+}
+#stage .node.log .hd {
+    padding: 7px 13px 5px; border-bottom: 1px solid #C9C0A6;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+}
+#stage .node.log .hd .nm { color: #6B6450; }
+#stage .node.log .hd .head { font-size: 14px; font-weight: 600; color: var(--settle); }
+#stage .node.log .rows { padding: 4px 0; min-height: 118px; }
+#stage .node.log .lrow {
+    display: grid; grid-template-columns: 40px 1fr 14px; gap: 8px; align-items: baseline;
+    padding: 2px 12px; font-size: 13px;
+}
+#stage .node.log .lrow.fresh { animation: settle 1.4s ease-out; }
+@media (prefers-reduced-motion: reduce) { #stage .node.log .lrow.fresh { animation: none; } }
+#stage .node.log .lrow .p { text-align: right; color: #9A9078; font-size: 13px; }
+#stage .node.log .lrow .t { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#stage .node.log .lrow .t .by { color: #A0977C; font-size: 12px; }
+#stage .node.log .lrow .t.bad { color: var(--red); }
+#stage .node.log .lrow .d { width: 11px; height: 11px; border-radius: 50%; align-self: center; border: 1px solid rgba(0,0,0,.25); }
+#stage .node.log .empty { color: #9A9078; font-size: 13px; padding: 36px 13px; }
+#stage .node.log .lfoot { border-top: 1px solid #C9C0A6; padding: 5px 12px 6px; font-size: 11px; color: #8A8265; text-align: left; }
+
+/* what a block is made of: context chips + a composition line */
+#stage .node .chips { display: flex; flex-direction: column; gap: 3px; margin: 5px 0 2px; }
+#stage .node .chip { font-size: 12px; font-weight: 600; color: var(--paper-dim); border: 1px solid #2E5647; padding: 1px 8px; }
+#stage .node.write .chip { border-color: #46654f; }
+#stage .node .comp { font-size: 11px; color: #6E8578; margin-top: 3px; letter-spacing: .01em; }
+
+/* transport label on a wire */
+#stage .elabel {
+    position: absolute; transform: translate(-50%, -50%);
+    font-size: 11.5px; color: var(--faint); white-space: nowrap;
+    background: rgba(14,31,26,.82); padding: 1px 7px; z-index: 1; pointer-events: none;
+}
+/* runtime process zones */
+#stage .zone { position: absolute; top: 10px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); opacity: .85; z-index: 1; }
+#stage .zone-api { left: 16px; }
+#stage .zone-worker { right: 16px; }
+
+/* the saga state machine, unfolded downward from the aggregates block */
+#stage .saga {
+    position: absolute; z-index: 5; width: 230px;
+    background: rgba(16,36,29,.98); border: 1px solid var(--paper-dim); border-top: 1px dashed #2E5647;
+    padding: 8px 12px 10px;
+    opacity: 0; transform: translateY(-6px); pointer-events: none;
+    transition: opacity .22s ease, transform .22s ease;
+}
+#stage .saga.on { opacity: 1; transform: translateY(0); }
+#stage .saga-hd { margin-bottom: 8px; }
+#stage .saga-title { display: block; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+#stage .saga-corr { display: block; font-size: 11px; color: #6E8578; margin-top: 1px; }
+#stage .saga-track { display: flex; flex-direction: column; }
+#stage .saga .sstate {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid #395C4C; padding: 5px 9px; font-size: 13px; color: var(--paper-dim); background: var(--ink);
+}
+#stage .saga .sstate .sdot { width: 8px; height: 8px; border-radius: 50%; background: #395C4C; flex: 0 0 auto; }
+#stage .saga .sstate.done { border-color: var(--settle); color: var(--mint); }
+#stage .saga .sstate.done .sdot { background: var(--mint); }
+#stage .saga .sstate.active { border-color: var(--mint); color: var(--paper); box-shadow: 0 0 0 1px var(--mint); }
+#stage .saga .sstate.active .sdot { background: var(--mint); animation: sagablink 1s steps(2) infinite; }
+@keyframes sagablink { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { #stage .saga .sstate.active .sdot { animation: none; } }
+#stage .saga .sstate.fail { margin-left: 26px; margin-top: 5px; border-style: dashed; border-color: #5A3A34; color: var(--faint); }
+#stage .saga .sstate.fail.active { border-color: var(--red); color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+#stage .saga .sstate.fail.active .sdot { background: var(--red); }
+#stage .saga .strans { display: flex; align-items: center; gap: 9px; padding: 3px 0; margin-left: 9px; position: relative; min-height: 20px; }
+#stage .saga .strans::before { content: ""; position: absolute; left: 9px; top: -2px; bottom: -2px; border-left: 1px dashed #395C4C; }
+#stage .saga .strans.ok::before { border-left-style: solid; border-color: var(--mint); }
+#stage .saga .strans.bad::before { border-left-color: var(--red); }
+#stage .saga .strans .sg { width: 15px; height: 15px; border-radius: 50%; border: 1px solid #6E8578; background: var(--ink); position: relative; z-index: 1; flex: 0 0 auto; margin-left: -8px; }
+#stage .saga .strans.ok .sg { border-color: var(--mint); }
+#stage .saga .strans.ok .sg::after { content: "\2713"; position: absolute; inset: 0; font-size: 10px; color: var(--mint); text-align: center; line-height: 14px; }
+#stage .saga .strans.bad .sg { border-color: var(--red); }
+#stage .saga .strans.bad .sg::after { content: "\2715"; position: absolute; inset: 0; font-size: 10px; color: var(--red); text-align: center; line-height: 14px; }
+#stage .saga .strans .sl { font-size: 11px; color: var(--faint); line-height: 1.2; }
+#stage .saga .strans .sl em { font-style: normal; color: #6E8578; }
+#stage .saga .strans.ok .sl { color: var(--mint); }
+#stage .saga .strans.bad .sl { color: var(--red); }
+#stage .saga-note { font-size: 11px; color: var(--amber); margin-top: 7px; min-height: 14px; line-height: 1.3; }
+
+/* packets that travel the wires */
+#stage .pkt {
+    position: absolute; left: 0; top: 0;
+    background: var(--paper); color: var(--ink); border: 1px solid var(--ink);
+    padding: 1px 9px; font-size: 14px; font-weight: 600; white-space: nowrap;
+    will-change: transform, opacity; z-index: 5;
+}
+#stage .pkt.cmd { background: var(--ink-3); color: var(--paper); border-color: var(--paper-dim); }
+#stage .pkt.evt { background: var(--paper); color: var(--ink); }
+#stage .pkt.out { background: var(--ink); color: var(--mint); border-color: var(--mint); }
+#stage .pkt.proj { background: var(--ink); color: var(--amber); border-color: var(--amber); }
+#stage .pkt.bad { background: #F3D6CE; border-color: var(--red); color: var(--red); }
+
+#stage .stamp { position: absolute; left: 0; top: 0; font-size: 14px; letter-spacing: .04em; white-space: nowrap; z-index: 6; }
+#stage .stamp.ok { color: var(--mint); }
+#stage .stamp.bad { color: var(--red); }
+#stage .stamp.warn { color: var(--amber); }
+
+#stage .legend-note {
+    position: absolute; left: 16px; bottom: 10px; z-index: 3;
+    font-size: 12px; color: var(--faint); max-width: 62%;
+    background: linear-gradient(90deg, rgba(14,31,26,.92) 80%, rgba(14,31,26,0));
+    border-left: 2px solid var(--line); padding: 4px 24px 4px 12px;
+}
+#stage .legend-note b { color: var(--paper-dim); font-weight: 600; }
+
+/* flow footer — tempo + a short pipeline trace */
+.flowfoot { flex: 0 0 auto; border-top: 1px solid var(--line); padding: 8px 16px 10px; background: var(--ink); }
+.flowfoot .frow { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.flowfoot label.speed { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); flex: 0 0 auto; }
+.flowfoot input[type=range] { width: 150px; accent-color: var(--mint); }
+.flowfoot .lag { margin-left: auto; font-size: 11.5px; }
+.feed { max-height: 76px; overflow: hidden; }
+.feed .line { font-size: 11.5px; color: var(--paper-dim); padding: 1px 0; display: flex; gap: 7px; }
+.feed .line .at { color: var(--faint); flex: 0 0 64px; }
+.feed .line .at.out { color: var(--mint); }
+.feed .line .at.proj { color: var(--amber); }
+.feed .line .at.write { color: var(--paper); }
+.feed .line .at.err { color: var(--red); }
+.feed .line.err { color: #E8A79A; }
+
+@media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; height: auto; }
+    .col { max-height: none; }
+    .panel { border-left: none; border-top: 1px solid var(--line); height: auto; }
+    .panes { height: 70vh; }
     header .links { margin-left: 0; }
 }
 </style>
@@ -269,7 +444,6 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         <input type="text" id="apikey" spellcheck="false" autocomplete="off">
     </div>
     <nav class="links">
-        <a href="/flow">flow</a>
         <a href="/api/docs">api docs</a>
         <a id="lnk-grafana" href="http://localhost:3000" rel="noopener">grafana</a>
         <a id="lnk-prometheus" href="http://localhost:9090" rel="noopener">prometheus</a>
@@ -295,7 +469,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         <div class="step edge"><span class="n">·</span><button id="e3" disabled>Deposit in the wrong currency</button></div>
         <div class="step edge"><span class="n">·</span><button id="e4" disabled>Transfer to a nonexistent account</button></div>
 
-        <div class="caption" id="caption">Every button below makes real calls to the public API with the key above — the page has no backdoor. Start with step 1.</div>
+        <div class="caption" id="caption">Every button here makes real calls to the public API with the key above — the page has no backdoor. Start with step 1, then watch it land on the three tabs to the right.</div>
 
         <div class="nl">
             <div class="eyebrow">ask the statement</div>
@@ -304,23 +478,71 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         </div>
     </section>
 
-    <section class="col exchange" aria-label="API exchange and read models">
-        <div class="models">
-            <div class="eyebrow">read models — projections (eventually consistent)<span id="sync" class="sync"></span></div>
-            <div id="balances"><div class="empty">Balances appear once accounts exist. Watch the version tick as projections catch up.</div></div>
+    <section class="panel" aria-label="Visualisations">
+        <div class="tabs" role="tablist">
+            <button data-tab="map" class="on" role="tab" aria-selected="true">money map</button>
+            <button data-tab="flow" role="tab" aria-selected="false">event flow</button>
+            <button data-tab="journal" role="tab" aria-selected="false">journal</button>
         </div>
+        <div class="panes">
+            <!-- TAB: money map — accounts as places + the api exchange that moved them -->
+            <div class="pane map on" data-pane="map" aria-label="Money map and API exchange">
+                <div class="models">
+                    <div class="eyebrow">read models — projections (eventually consistent)<span id="sync" class="sync"></span></div>
+                    <div id="balances"><div class="empty">Balances appear once accounts exist. Watch the version tick as projections catch up.</div></div>
+                </div>
+                <div class="exchange">
+                    <div class="eyebrow">api exchange — what the caller sees</div>
+                    <div id="calls"><div class="empty">No calls yet. Run step 1.</div></div>
+                </div>
+            </div>
 
-        <div class="eyebrow">api exchange — what the caller sees</div>
-        <div id="calls"><div class="empty">No calls yet. Run step 1.</div></div>
-    </section>
+            <!-- TAB: event flow — one event through the machine, driven by the same calls -->
+            <div class="pane flow" data-pane="flow" aria-label="Data flow">
+                <div class="stage" id="stage">
+                    <svg id="rails" aria-hidden="true"></svg>
+                    <div class="zone zone-api">◖ api process · roadrunner http — synchronous write</div>
+                    <div class="zone zone-worker">worker process · roadrunner loop — async catch-up ◗</div>
+                    <div class="saga" id="saga" aria-hidden="true">
+                        <div class="saga-hd"><span class="saga-title">TransferOrchestrator · saga</span><span class="saga-corr" id="sagaCorr"></span></div>
+                        <div class="saga-track">
+                            <div class="sstate" data-s="Initiated"><i class="sdot"></i>Initiated</div>
+                            <div class="strans" data-t="hold"><i class="sg"></i><span class="sl">hold <em>· Account.hold</em></span></div>
+                            <div class="sstate" data-s="Held"><i class="sdot"></i>Held</div>
+                            <div class="strans" data-t="post"><i class="sg"></i><span class="sl">post <em>· Ledger.post</em></span></div>
+                            <div class="sstate" data-s="Posted"><i class="sdot"></i>Posted</div>
+                            <div class="strans" data-t="settle"><i class="sg"></i><span class="sl">settle <em>· Account.debit+credit</em></span></div>
+                            <div class="sstate" data-s="Completed"><i class="sdot"></i>Completed</div>
+                            <div class="sstate fail" data-s="Failed"><i class="sdot"></i>Failed</div>
+                        </div>
+                        <div class="saga-note" id="sagaNote"></div>
+                    </div>
+                    <div class="legend-note">
+                        The append-only <b>event log</b> at the centre is the single source of truth. Commands flow
+                        <b>in</b> from the left and are written as events; the <b>outbox</b> and <b>projections</b>
+                        are independent catch-up subscribers that tail the same ordered log and fan derived state back <b>out</b>.
+                    </div>
+                </div>
+                <div class="flowfoot">
+                    <div class="frow">
+                        <label class="speed" for="fspeed">tempo</label>
+                        <input type="range" id="fspeed" min="0" max="100" value="35">
+                        <span class="lag"><span class="eyebrow" style="margin:0">trace</span> <span id="lagTag"></span></span>
+                    </div>
+                    <div class="feed" id="feed"></div>
+                </div>
+            </div>
 
-    <section class="col tape-col" aria-label="Event log">
-        <div class="tape-head">
-            <div class="eyebrow">the journal — what was recorded</div>
-            <p>The append-only event log is the source of truth; balances above are derived from it. Entry № is the global position. Dots thread one command’s correlation id across streams.</p>
-        </div>
-        <div class="tape" id="tape">
-            <div class="row"><div class="pos">—</div><div class="body"><div class="payload">The log is empty. Every action appends here; nothing is ever updated in place.</div></div></div>
+            <!-- TAB: journal — the append-only log, the source of truth -->
+            <div class="pane journal tape-col" data-pane="journal" aria-label="Event log">
+                <div class="tape-head">
+                    <div class="eyebrow">the journal — what was recorded</div>
+                    <p>The append-only event log is the source of truth; the balances and both diagrams are derived from it. Entry № is the global position. Dots thread one command’s correlation id across streams.</p>
+                </div>
+                <div class="tape" id="tape">
+                    <div class="row"><div class="pos">—</div><div class="body"><div class="payload">The log is empty. Every action appends here; nothing is ever updated in place.</div></div></div>
+                </div>
+            </div>
         </div>
     </section>
 </div>
@@ -329,6 +551,13 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 "use strict";
 (() => {
     const $ = (id) => document.getElementById(id);
+    const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const noMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const SVGNS = "http://www.w3.org/2000/svg";
+    const money = (minor, cur) => (minor / 100).toFixed(2) + (cur ? " " + cur : "");
+    const corrHue = (id) => { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 140; return 190 + h; };
+
     const state = {
         accounts: {},          // name -> id
         streams: [],           // {kind: 'accounts'|'transfers', id, label}
@@ -338,12 +567,24 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     };
 
     /* ---------- observability links (compose vs public deployment) ---------- */
-    // Locally (compose) Grafana/Prometheus sit on their own ports. On the public
-    // deployment Grafana is served under /grafana and Prometheus is not exposed.
     if (location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
         $("lnk-grafana").href = "/grafana/";
         $("lnk-prometheus").remove();
     }
+
+    /* ---------- tabs (right-side panel) ---------- */
+    const tabBtns = [...document.querySelectorAll(".tabs [data-tab]")];
+    const panes = [...document.querySelectorAll(".pane")];
+    let activeTab = "map";
+    function activateTab(name) {
+        activeTab = name;
+        tabBtns.forEach(b => { const on = b.dataset.tab === name; b.classList.toggle("on", on); b.classList.remove("dirty"); b.setAttribute("aria-selected", on ? "true" : "false"); });
+        panes.forEach(p => p.classList.toggle("on", p.dataset.pane === name));
+        if (name === "flow") requestAnimationFrame(() => drawRails());   // recompute geometry now the stage has size
+    }
+    // Draw attention to a tab that updated while it was in the background.
+    const bump = (name) => { if (name !== activeTab) tabBtns.find(b => b.dataset.tab === name)?.classList.add("dirty"); };
+    tabBtns.forEach(b => b.addEventListener("click", () => activateTab(b.dataset.tab)));
 
     /* ---------- api client (a plain client: key from the field) ---------- */
     const keyInput = $("apikey");
@@ -392,18 +633,10 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         calls.prepend(d);
         while (calls.children.length > 8) calls.lastElementChild.remove();
         if (calls.children.length > 1) calls.children[1].open = false;
-    }
-    function el(tag, cls, text) {
-        const n = document.createElement(tag);
-        if (cls) n.className = cls;
-        if (text !== undefined) n.textContent = text;
-        return n;
+        bump("map");
     }
 
-    /* ---------- read models ---------- */
-    const money = (minor, cur) => (minor / 100).toFixed(2) + (cur ? " " + cur : "");
     /* ---------- the money map: accounts are places, money travels wires ---------- */
-    // Fixed geography: every actor has a home, whatever order they appear in.
     const PLACES = { alice: { x: 38, y: 26 }, bob: { x: 82, y: 26 }, racer: { x: 82, y: 78 } };
     const SPARE_SLOTS = [{ x: 58, y: 78 }, { x: 20, y: 26 }, { x: 58, y: 26 }];
     const slotByName = {};
@@ -412,7 +645,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         if (!map) {
             map = el("div", "map");
             map.id = "map";
-            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            const svg = document.createElementNS(SVGNS, "svg");
             svg.id = "wires";
             map.append(svg);
             const world = el("div", "node world");
@@ -432,14 +665,12 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const slot = slotByName[name] ??= PLACES[name] ?? SPARE_SLOTS[Object.keys(slotByName).filter(n => !PLACES[n]).length % SPARE_SLOTS.length];
         node = el("div", "node");
         node.dataset.name = name;
-        node.append(el("div", "nm", name), el("div", "bal", "\u2026"), el("div", "sub", "awaiting projection"));
+        node.append(el("div", "nm", name), el("div", "bal", "…"), el("div", "sub", "awaiting projection"));
         node.style.left = slot.x + "%";
         node.style.top = slot.y + "%";
         map.append(node);
         return node;
     }
-    // Updates the node cards and reports convergence: whether every known account
-    // answered (projections caught up) and a snapshot key for change detection.
     async function refreshBalances() {
         const names = Object.keys(state.accounts);
         if (!names.length) return { allProjected: true, key: "", lag: 0 };
@@ -450,13 +681,11 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             const id = state.accounts[name];
             let res;
             try { res = await fetch("/api/accounts/" + id, { headers: { "X-Api-Key": keyInput.value }, signal: AbortSignal.timeout(8000) }); }
-            catch { continue; } // a stalled/timed-out poll counts as not-yet-projected, never a hang
+            catch { continue; }
             if (!res.ok) continue;
             const r = await res.json();
             projected++;
             keys.push(name + ":" + r.available + ":" + r.reserved + ":" + r.version);
-            // Lag = how many events the write side has that the projection has not
-            // applied yet. head is the event-stream top; r.version is the read model.
             const behind = Math.max(0, (state.head[id] ?? r.version) - r.version);
             lag += behind;
             node.querySelector(".bal").textContent = money(r.available, r.currency);
@@ -464,15 +693,14 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             const bits = ["v" + r.version];
             if (behind > 0) bits.push("behind " + behind);
             if (r.reserved > 0) bits.push("reserved " + money(r.reserved, ""));
-            sub.textContent = bits.join(" \u00B7 ");
+            sub.textContent = bits.join(" · ");
             sub.className = "sub" + (behind > 0 || r.reserved > 0 ? " hot" : "");
         }
         return { allProjected: projected === names.length, key: keys.join("|"), lag };
     }
 
-    /* ---------- the journal tape ---------- */
+    /* ---------- the journal tape (and the feed into the flow diagram) ---------- */
     const seen = new Set();
-    const corrHue = (id) => { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 140; return 190 + h; };
     async function refreshTape() {
         const all = [];
         for (const s of state.streams) {
@@ -483,8 +711,6 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             const data = await res.json();
             for (const e of data.events) {
                 all.push({ ...e, streamType: data.streamType, label: s.label });
-                // The event stream is the write side — its top version is the truth
-                // the projection is racing to catch. Track it to measure the lag.
                 if (data.streamType === "account") state.head[s.id] = Math.max(state.head[s.id] ?? 0, e.version);
             }
         }
@@ -500,9 +726,9 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             const body = el("div", "body");
             const l1 = el("div", "l1");
             l1.append(el("span", "chip" + (e.streamType === "transfer" ? " transfer" : ""), e.streamType + " · " + e.label));
-            const short = e.type.split(".").pop();
-            const tone = /failed/.test(short) ? " bad" : /held|hold/.test(short) ? " warn" : /completed|credited|deposited/.test(short) ? " ok" : "";
-            l1.append(el("span", "etype" + tone, short), el("span", "v", "v" + e.version));
+            const shortType = e.type.split(".").pop();
+            const tone = /failed/.test(shortType) ? " bad" : /held|hold/.test(shortType) ? " warn" : /completed|credited|deposited/.test(shortType) ? " ok" : "";
+            l1.append(el("span", "etype" + tone, shortType), el("span", "v", "v" + e.version));
             if (e.correlationId) {
                 const corr = el("span", "corr");
                 const dot = el("span", "dot");
@@ -513,12 +739,14 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             body.append(l1, el("div", "payload", JSON.stringify(e.payload)));
             row.append(body);
             tape.append(row);
+            bump("journal");
+            // feed the very same event into the flow diagram (write-side hop → log → fan-out)
+            flowIngest({ pos: e.globalPosition, type: e.type, corr: e.correlationId || "live", acct: e.streamType === "account" ? e.label : null });
         }
         tape.lastElementChild?.scrollIntoView({ block: "nearest" });
     }
 
-    /* ---------- wire travel (visual only; the API responses are the truth) ---------- */
-    const noMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    /* ---------- wire travel on the money map (visual only; the API responses are the truth) ---------- */
     const centerOf = (elm) => {
         const map = ensureMap().getBoundingClientRect();
         const r = elm.getBoundingClientRect();
@@ -555,16 +783,14 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         }
         return g;
     }
-    // Money travels a marching dashed wire from one place to another. "settle"
-    // arrives (node flash + stamp); "refuse" is turned back halfway; "bounce"
-    // reaches a place that is not there and comes home (the hold released).
     async function moveMoney({ from, to, amount, outcome = "settle", reason = "", at = 0.52, label }) {
+        bump("map");
         const map = ensureMap();
         const fromEl = from === "world" ? map.querySelector('.node.world') : nodeFor(from);
         const toEl = to === "ghost" ? ghostNode() : nodeFor(to);
         const a = centerOf(fromEl), b = centerOf(toEl);
         const svg = map.querySelector("svg");
-        const wire = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        const wire = document.createElementNS(SVGNS, "line");
         wire.setAttribute("x1", String(a.x));
         wire.setAttribute("y1", String(a.y));
         wire.setAttribute("x2", String(b.x));
@@ -577,11 +803,11 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             if (to === "ghost") { const g = map.querySelector('.node.ghost'); if (g) fadeOut(g, 400); }
         };
         if (noMotion) {
-            if (outcome === "settle") { stampAt("\u2713 " + money(amount, ""), "ok", b); flashNode(toEl); }
+            if (outcome === "settle") { stampAt("✓ " + money(amount, ""), "ok", b); flashNode(toEl); }
             else {
                 wire.classList.add("bad");
                 const p = outcome === "bounce" ? b : { x: a.x + (b.x - a.x) * at, y: a.y + (b.y - a.y) * at };
-                stampAt("\u2715 " + (reason || "refused"), "bad", p);
+                stampAt("✕ " + (reason || "refused"), "bad", p);
             }
             await cleanup(1400);
             return;
@@ -593,20 +819,20 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         coin.style.transform = tf(a);
         if (outcome === "settle") {
             await glide(coin, [{ transform: tf(a) }, { transform: tf(b) }], 950);
-            stampAt("\u2713 " + money(amount, ""), "ok", b);
+            stampAt("✓ " + money(amount, ""), "ok", b);
             flashNode(toEl);
         } else if (outcome === "refuse") {
             const mid = { x: a.x + (b.x - a.x) * at, y: a.y + (b.y - a.y) * at };
             await glide(coin, [{ transform: tf(a) }, { transform: tf(mid) }], 380 + 280 * at);
             coin.classList.add("bad");
             wire.classList.add("bad");
-            stampAt("\u2715 " + (reason || "refused"), "bad", mid);
+            stampAt("✕ " + (reason || "refused"), "bad", mid);
             await glide(coin, [{ transform: tf(mid) }, { transform: tf(a) }], 480);
         } else { // bounce: reach the void, come home, hold released
             await glide(coin, [{ transform: tf(a) }, { transform: tf(b) }], 850);
             coin.classList.add("bad");
             wire.classList.add("bad");
-            stampAt("\u2715 " + (reason || "no such account"), "bad", b);
+            stampAt("✕ " + (reason || "no such account"), "bad", b);
             await glide(coin, [{ transform: tf(b) }, { transform: tf(a) }], 700);
             stampAt("hold released", "warn", a);
         }
@@ -616,12 +842,9 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
     let settling = 0;
     async function settleAndShow() {
-        // Refresh until the projections have genuinely converged: every known
-        // account answers, and two consecutive snapshots agree. The chip only
-        // says "settled" when that is true — never over a stale panel.
         const sync = $("sync");
         settling++;
-        sync.textContent = "\u25D0 projections syncing\u2026";
+        sync.textContent = "◐ projections syncing…";
         sync.className = "sync on";
         let converged = false;
         try {
@@ -631,14 +854,14 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
                 await refreshTape();            // refresh the write-side head first...
                 const snap = await refreshBalances();  // ...so this tick's lag is current
                 sync.textContent = snap.lag > 0
-                    ? "\u25D0 projections lag +" + snap.lag + " event" + (snap.lag === 1 ? "" : "s")
-                    : "\u25D0 projections syncing\u2026";
+                    ? "◐ projections lag +" + snap.lag + " event" + (snap.lag === 1 ? "" : "s")
+                    : "◐ projections syncing…";
                 if (snap.allProjected && snap.lag === 0 && previous === snap.key) { converged = true; break; }
                 previous = snap.key;
             }
         } finally {
             if (--settling === 0) {
-                sync.textContent = converged ? "\u2713 settled \u00B7 lag 0" : "\u25D0 still catching up \u2014 any action refreshes";
+                sync.textContent = converged ? "✓ settled · lag 0" : "◐ still catching up — any action refreshes";
                 sync.className = converged ? "sync ok" : "sync on";
             }
         }
@@ -648,26 +871,375 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     const enable = (...ids) => ids.forEach(id => { $(id).disabled = false; });
     const track = (kind, id, label) => { if (!state.streams.some(s => s.id === id)) state.streams.push({ kind, id, label }); };
 
+    /* ======================================================================
+       event flow — the radial pipeline, driven live by the same event stream
+       ====================================================================== */
+    const NODES = {
+        command:     { x: 12, y: 45, cls: "write", nm: "API ingress", role: "HTTP · RoadRunner", sub: "dispatched 0", comp: "auth · Idempotency-Key · CommandBus" },
+        aggregate:   { x: 27, y: 17, cls: "write", nm: "aggregates", chips: ["Accounts", "Transfers · saga", "Ledger · double-entry"], sub: "idle", comp: "AggregateRoot: replay → recordThat" },
+        log:         { x: 50, y: 49, cls: "log" },
+        outbox:      { x: 73, y: 16, cls: "read",  nm: "outbox relay", role: "publisher", sub: "ckpt #0 · lag 0", comp: "RelayCheckpoint · ConsumedEvents" },
+        subscribers: { x: 90, y: 38, cls: "read",  nm: "event bus", role: "pg NOTIFY (active)", sub: "ledger_events · 0 sent", comp: "NATS JetStream = future swap · not wired" },
+        projections: { x: 73, y: 79, cls: "read",  nm: "projections", role: "catch-up · 2 projectors", sub: "ckpt #0 · lag 0", comp: "CheckpointStore · exactly-once" },
+        readmodel:   { x: 30, y: 79, cls: "read",  nm: "read models", chips: ["account_balances", "account_statement"], sub: "awaiting", comp: "served back to API queries" },
+    };
+    const RAILS = [
+        ["command", "aggregate", "write"],
+        ["aggregate", "log", "write"],
+        ["log", "outbox", "read"],
+        ["outbox", "subscribers", "read"],
+        ["log", "projections", "read"],
+        ["projections", "readmodel", "read"],
+        ["readmodel", "command", "back"],
+    ];
+    const WIRE_LABEL = {
+        "command>aggregate": "command bus · in-process, sync",
+        "aggregate>log": "append · same tx · UNIQUE(stream,version)",
+        "log>outbox": "tail from checkpoint",
+        "outbox>subscribers": "pg NOTIFY · at-least-once",
+        "log>projections": "tail from checkpoint",
+        "projections>readmodel": "upsert · same tx as checkpoint",
+        "readmodel>command": "queries · read (eventually consistent)",
+    };
+
+    const stage = $("stage");
+    const svg = $("rails");
+    const nodeEls = {};
+
+    function buildNodes() {
+        for (const [id, n] of Object.entries(NODES)) {
+            const node = el("div", "node " + n.cls);
+            node.id = "n-" + id;
+            node.style.left = n.x + "%";
+            node.style.top = n.y + "%";
+            if (id === "log") {
+                node.append(logHead(), logRows(), logFoot());
+            } else {
+                node.append(el("div", "nm", n.nm));
+                if (n.chips) {
+                    const box = el("div", "chips");
+                    for (const c of n.chips) { const chip = el("div", "chip", c); chip.dataset.ctx = c.split(" ")[0]; box.append(chip); }
+                    node.append(box);
+                }
+                if (n.role) node.append(el("div", "role", n.role));
+                if (n.sub !== undefined) node.append(el("div", "sub", n.sub));
+                if (n.comp) node.append(el("div", "comp", n.comp));
+            }
+            stage.append(node);
+            nodeEls[id] = node;
+        }
+    }
+    const logFoot = () => el("div", "lfoot", "DbalEventStore · serialize · upcast · doubles as the outbox");
+    function logHead() {
+        const hd = el("div", "hd");
+        hd.append(el("div", "nm", "event log"));
+        const h = el("div", "head", "head #0"); h.id = "logHead";
+        hd.append(h);
+        return hd;
+    }
+    function logRows() {
+        const r = el("div", "rows"); r.id = "logRows";
+        r.append(el("div", "empty", "empty — every event appends here"));
+        return r;
+    }
+    const setSub = (id, text, tone) => {
+        const s = nodeEls[id]?.querySelector(".sub");
+        if (s) { s.textContent = text; s.className = "sub" + (tone ? " " + tone : ""); }
+    };
+
+    const dims = () => ({ W: stage.clientWidth, H: stage.clientHeight });
+    const ptOf = (id) => { const { W, H } = dims(); const n = NODES[id]; return { x: n.x / 100 * W, y: n.y / 100 * H }; };
+    function trim(a, b, padA, padB) {
+        const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+        const ux = dx / len, uy = dy / len;
+        return { a: { x: a.x + ux * padA, y: a.y + uy * padA }, b: { x: b.x - ux * padB, y: b.y - uy * padB } };
+    }
+    function mkLine(a, b, cls) {
+        const l = document.createElementNS(SVGNS, "line");
+        l.setAttribute("x1", a.x); l.setAttribute("y1", a.y);
+        l.setAttribute("x2", b.x); l.setAttribute("y2", b.y);
+        l.setAttribute("class", cls);
+        return l;
+    }
+    const pad = (id) => (id === "log" ? 128 : 84);
+    let railGroup;
+    function drawRails() {
+        if (!stage.clientWidth) return;   // hidden tab has no geometry yet
+        svg.innerHTML = "";
+        railGroup = document.createElementNS(SVGNS, "g");
+        svg.append(railGroup);
+        const { W, H } = dims();
+        railGroup.append(mkLine({ x: W / 2, y: H * 0.05 }, { x: W / 2, y: H * 0.95 }, "seam"));
+        for (const [from, to, kind] of RAILS) {
+            const seg = trim(ptOf(from), ptOf(to), pad(from), pad(to));
+            railGroup.append(mkLine(seg.a, seg.b, "rail " + kind));
+        }
+        drawEdgeLabels();
+        sagaDock();
+    }
+    function drawEdgeLabels() {
+        stage.querySelectorAll(".elabel").forEach(n => n.remove());
+        const { W, H } = dims(), C = { x: W / 2, y: H / 2 };
+        for (const [from, to] of RAILS) {
+            const txt = WIRE_LABEL[from + ">" + to];
+            if (!txt) continue;
+            const A = ptOf(from), B = ptOf(to);
+            const M = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+            let dx = B.x - A.x, dy = B.y - A.y; const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+            let px = -dy, py = dx;
+            if ((M.x - C.x) * px + (M.y - C.y) * py < 0) { px = -px; py = -py; }
+            const lab = el("div", "elabel", txt);
+            stage.append(lab);
+            lab.style.left = (M.x + px * 20) + "px";
+            lab.style.top = (M.y + py * 20) + "px";
+        }
+    }
+
+    /* ---------- packet travel along a wire ---------- */
+    async function movePkt(from, to, { label, cls = "", ms = 900 }) {
+        const seg = trim(ptOf(from), ptOf(to), pad(from), pad(to));
+        const a = seg.a, b = seg.b;
+        let wire = null;
+        if (!noMotion) {
+            const wk = cls.includes("bad") ? "flow bad" : (cls.includes("cmd") || cls.includes("evt")) ? "flow write" : "flow";
+            wire = mkLine(a, b, wk);
+            svg.append(wire);
+        }
+        const pkt = el("div", "pkt " + cls, label);
+        stage.append(pkt);
+        const hw = pkt.offsetWidth / 2, hh = pkt.offsetHeight / 2;
+        const tf = (p) => `translate(${p.x - hw}px, ${p.y - hh}px)`;
+        pkt.style.transform = tf(a);
+        if (noMotion) { pkt.style.transform = tf(b); await sleep(ms * 0.5); }
+        else { await pkt.animate([{ transform: tf(a) }, { transform: tf(b) }], { duration: ms, easing: "cubic-bezier(.45,0,.55,1)", fill: "forwards" }).finished; }
+        if (wire) setTimeout(() => wire.remove(), 260);
+        pkt.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, fill: "forwards" }).finished.then(() => pkt.remove());
+        return b;
+    }
+    function flash(id, color = "rgba(116,198,157,.28)", border = "#74C69D") {
+        if (noMotion) return;
+        nodeEls[id]?.animate([{ backgroundColor: color, borderColor: border }, {}], { duration: 1000, easing: "ease-out" });
+    }
+    function stageStamp(id, text, cls) {
+        if (noMotion) return;
+        const p = ptOf(id);
+        const n = el("div", "stamp " + cls, text);
+        stage.append(n);
+        n.animate(
+            [{ opacity: 1, transform: `translate(${p.x + 8}px, ${p.y - 8}px)` }, { opacity: 0, transform: `translate(${p.x + 8}px, ${p.y - 30}px)` }],
+            { duration: 1400, easing: "ease-out", fill: "forwards" },
+        ).finished.then(() => n.remove());
+    }
+
+    /* ---------- causation: who records each event, and on which step ---------- */
+    const short = (type) => type.includes(".") ? type.split(".")[1] : type;
+    const ctxOf = (type) => { const p = type.split(".")[0]; return p === "accounts" ? "Accounts" : p === "transfers" ? "Transfers" : p === "ledger" ? "Ledger" : p; };
+    const emitterOf = (ev) => { const c = ctxOf(ev.type); return c === "Accounts" ? "Account" + (ev.acct ? " · " + ev.acct : "") : c === "Transfers" ? "Transfer" : c === "Ledger" ? "Ledger" : c; };
+    const STEP = { account_opened: "open", funds_deposited: "deposit", funds_held: "hold", hold_released: "compensate", funds_debited: "settle", funds_credited: "settle", transfer_initiated: "initiate", transfer_held: "hold", transfer_posted: "post", transfer_completed: "settle", transfer_failed: "fail", journal_entry_posted: "post" };
+    const stepOf = (type) => STEP[short(type)] || "";
+    const emitterShort = (ev) => ev.acct ? ev.acct : ctxOf(ev.type) === "Transfers" ? "transfer" : ctxOf(ev.type) === "Ledger" ? "ledger" : "account";
+    const CMD = { account_opened: "OpenAccount", funds_deposited: "DepositFunds", funds_held: "HoldFunds", transfer_initiated: "InitiateTransfer" };
+    const cmdLabel = (ev) => CMD[short(ev.type)] || "Command";
+    function flashChip(ctx) {
+        if (noMotion) return;
+        const chip = nodeEls.aggregate?.querySelector('.chip[data-ctx="' + ctx + '"]');
+        if (chip) chip.animate([{ background: "rgba(234,228,211,.32)", borderColor: "#EAE4D3", color: "#EAE4D3" }, {}], { duration: 1100, easing: "ease-out" });
+    }
+
+    /* ---------- the saga's own state machine, unfolded during a transfer ---------- */
+    const SSTATE = { transfer_initiated: "Initiated", transfer_held: "Held", transfer_posted: "Posted", transfer_completed: "Completed", transfer_failed: "Failed" };
+    function sagaDock() {
+        const s = $("saga");
+        if (!s.classList.contains("on") || !nodeEls.aggregate) return;
+        const r = nodeEls.aggregate.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+        s.style.left = (r.left - sr.left) + "px";
+        s.style.top = (r.bottom - sr.top - 1) + "px";
+        s.style.width = r.width + "px";
+    }
+    function sagaShow(corr) {
+        const s = $("saga");
+        s.querySelectorAll(".sstate").forEach(n => n.classList.remove("active", "done"));
+        s.querySelectorAll(".strans").forEach(n => n.classList.remove("ok", "bad"));
+        $("sagaNote").textContent = "";
+        $("sagaCorr").textContent = corr ? "corr " + corr : "";
+        nodeEls.aggregate?.querySelector(".comp")?.style.setProperty("display", "none");
+        s.classList.add("on");
+        sagaDock();
+    }
+    const sagaHide = () => {
+        $("saga").classList.remove("on");
+        nodeEls.aggregate?.querySelector(".comp")?.style.removeProperty("display");
+    };
+    function sagaEnter(stateName) {
+        const s = $("saga");
+        s.querySelectorAll(".sstate.active").forEach(n => { n.classList.remove("active"); if (!n.classList.contains("fail")) n.classList.add("done"); });
+        s.querySelector('.sstate[data-s="' + stateName + '"]')?.classList.add("active");
+        sagaDock();
+    }
+    const sagaGuard = (phase, ok) => { $("saga").querySelector('.strans[data-t="' + phase + '"]')?.classList.add(ok ? "ok" : "bad"); sagaDock(); };
+    function sagaFail() {
+        const s = $("saga");
+        s.querySelectorAll(".sstate.active").forEach(n => n.classList.remove("active"));
+        s.querySelector('.sstate[data-s="Failed"]')?.classList.add("active");
+        sagaDock();
+    }
+    const sagaNote = (text) => { $("sagaNote").textContent = text; sagaDock(); };
+    function driveSaga(ev) {
+        const s = short(ev.type);
+        if (s === "transfer_initiated") sagaShow(ev.corr);
+        if (s === "hold_released") sagaNote("↩ HoldReleased — reserved funds returned to available (compensation)");
+        if (SSTATE[s]) {
+            if (s === "transfer_failed") sagaFail();
+            else {
+                sagaEnter(SSTATE[s]);
+                if (s === "transfer_held") sagaGuard("hold", true);
+                else if (s === "transfer_posted") sagaGuard("post", true);
+                else if (s === "transfer_completed") sagaGuard("settle", true);
+            }
+        }
+        if (s === "transfer_completed" || s === "transfer_failed") setTimeout(() => sagaHide(), 3200);
+    }
+
+    function appendLogRow(ev) {
+        const rows = $("logRows");
+        if (rows.firstElementChild?.classList.contains("empty")) rows.innerHTML = "";
+        const row = el("div", "lrow fresh");
+        row.append(el("div", "p", "#" + ev.pos));
+        const t = el("div", "t" + (ev.bad ? " bad" : ""), short(ev.type));
+        t.append(el("span", "by", " · " + emitterShort(ev)));
+        row.append(t);
+        const d = el("div", "d");
+        d.style.background = `hsl(${corrHue(ev.corr)} 55% 55%)`;
+        d.title = "correlation " + ev.corr;
+        row.append(d);
+        rows.append(row);
+        while (rows.children.length > 5) rows.firstElementChild.remove();
+        $("logHead").textContent = "head #" + ev.pos;
+    }
+
+    /* ---------- trace feed + lag tag ---------- */
+    function trace(where, text) {
+        const feed = $("feed");
+        const line = el("div", "line");
+        line.append(el("span", "at " + where, where), el("span", "", text));
+        feed.prepend(line);
+        while (feed.children.length > 6) feed.lastElementChild.remove();
+    }
+    function updateLagTag() {
+        const l = Math.max(head - projCkpt, head - outboxCkpt, 0);
+        $("lagTag").textContent = l > 0 ? "· lag +" + l : "· lag 0";
+        $("lagTag").style.color = l > 0 ? "var(--amber)" : "var(--mint)";
+    }
+
+    /* ---------- the shared log + two independent catch-up loops ---------- */
+    let head = 0;
+    let outboxCkpt = 0, projCkpt = 0, published = 0, dispatched = 0;
+    const logStore = [];
+    let speedMs = () => 1750 - ($("fspeed").value / 100) * 1200;
+
+    function appendEvent(ev) {
+        head += 1;
+        ev.seq = head;
+        logStore.push(ev);
+        appendLogRow(ev);
+        flash("log", "rgba(31,107,74,.16)", "#1F6B4A");
+        updateLagTag();
+        trace("write", "#" + ev.pos + " " + short(ev.type) + " · by " + emitterOf(ev) + (stepOf(ev.type) ? " (" + stepOf(ev.type) + ")" : ""));
+        bump("flow");
+    }
+
+    async function outboxLoop() {
+        for (;;) {
+            if (outboxCkpt < head) {
+                const ev = logStore[outboxCkpt];
+                if (!ev) { await sleep(140); continue; }
+                setSub("outbox", "ckpt #" + ev.pos + " · lag " + (head - outboxCkpt), "hot");
+                await movePkt("log", "outbox", { label: short(ev.type) + " #" + ev.pos, cls: "out", ms: speedMs() * 0.9 });
+                flash("outbox");
+                await movePkt("outbox", "subscribers", { label: short(ev.type) + " #" + ev.pos, cls: "out", ms: speedMs() * 0.7 });
+                published += 1;
+                outboxCkpt = ev.seq;
+                stageStamp("subscribers", "▲ NOTIFY", "ok");
+                setSub("subscribers", "ledger_events · " + published + " sent", "ok");
+                const lag = head - outboxCkpt;
+                setSub("outbox", "ckpt #" + ev.pos + " · lag " + lag, lag ? "hot" : "ok");
+                trace("out", "#" + ev.pos + " published");
+                updateLagTag();
+            } else {
+                await sleep(140);
+            }
+        }
+    }
+    async function projectionsLoop() {
+        for (;;) {
+            if (projCkpt < head) {
+                const ev = logStore[projCkpt];
+                if (!ev) { await sleep(160); continue; }
+                setSub("projections", "ckpt #" + ev.pos + " · lag " + (head - projCkpt), "hot");
+                await movePkt("log", "projections", { label: short(ev.type) + " #" + ev.pos, cls: "proj", ms: speedMs() });
+                flash("projections", "rgba(217,164,65,.24)", "#D9A441");
+                await movePkt("projections", "readmodel", { label: short(ev.type), cls: "proj", ms: speedMs() * 0.75 });
+                projCkpt = ev.seq;
+                setSub("readmodel", "updated ▸ #" + ev.pos, "ok");
+                flash("readmodel", "rgba(217,164,65,.20)", "#D9A441");
+                const lag = head - projCkpt;
+                setSub("projections", "ckpt #" + ev.pos + " · lag " + lag, lag ? "hot" : "ok");
+                trace("proj", "#" + ev.pos + " → read model");
+                updateLagTag();
+            } else {
+                await sleep(160);
+            }
+        }
+    }
+
+    /* ---------- ingest real events into the pipeline, one hop at a time ---------- */
+    const seenCorr = new Set();
+    const flowQueue = [];
+    let flowDraining = false;
+    function flowIngest(ev) {
+        flowQueue.push(ev);
+        if (!flowDraining) drainFlow();
+    }
+    async function drainFlow() {
+        flowDraining = true;
+        while (flowQueue.length) {
+            const ev = flowQueue.shift();
+            // a fresh correlation id means a new command arrived — show it enter the API
+            if (!seenCorr.has(ev.corr)) {
+                seenCorr.add(ev.corr);
+                dispatched += 1;
+                setSub("command", "dispatched " + dispatched);
+                flash("command");
+                await movePkt("command", "aggregate", { label: cmdLabel(ev) + " →", cls: "cmd", ms: speedMs() });
+                flash("aggregate", "rgba(234,228,211,.16)", "#EAE4D3");
+            }
+            const ctx = ctxOf(ev.type);
+            setSub("aggregate", "records ▸ " + (stepOf(ev.type) || short(ev.type)), "hot");
+            flashChip(ctx);
+            await movePkt("aggregate", "log", { label: emitterOf(ev) + " ▸ " + short(ev.type), cls: "evt", ms: speedMs() * 0.9 });
+            appendEvent(ev);
+            driveSaga(ev);
+            await sleep(300);
+        }
+        setSub("aggregate", "idle");
+        flowDraining = false;
+    }
+
     /* ---------- helpers ---------- */
     async function openAccount(label) {
         const r = await api("POST", "/api/accounts", { currency: "USD" }, idem());
         if (r.status !== 201) return null;
         state.accounts[label] = r.json.accountId;
         track("accounts", r.json.accountId, label);
-        // A fresh account may take over an existing card (e.g. each race retires
-        // the previous racer): reset it so the old balance can't masquerade.
         const node = document.querySelector('.map .node[data-name="' + label + '"]');
         if (node) {
-            node.querySelector(".bal").textContent = "\u2026";
+            node.querySelector(".bal").textContent = "…";
             const sub = node.querySelector(".sub");
             sub.textContent = "awaiting projection";
             sub.className = "sub";
         }
         return r.json.accountId;
     }
-    // A remembered id can outlive the backend (stack restarted under an open
-    // page): validate it against the write side and reopen the actor if its
-    // stream is gone — scenarios must never target ghosts of a previous db.
     async function ensureAccount(label) {
         const id = state.accounts[label];
         if (id) {
@@ -707,7 +1279,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         state.usedKey = key;
         caption(failed
             ? "<strong>A business failure is an outcome, not an error.</strong> Alice was short, so the hold was refused — 201 with status <em>failed</em> and a reason, recorded on the transfer stream. No money moved."
-            : "<strong>The saga, recorded.</strong> hold → post journal → settle, each step an event on the transfer stream (same correlation dot). The funds sat in <em>reserved</em> until settlement.");
+            : "<strong>The saga, recorded.</strong> hold → post journal → settle, each step an event on the transfer stream (same correlation dot). Open the <em>event flow</em> tab to watch the saga unfold. The funds sat in <em>reserved</em> until settlement.");
         enable("s5", "e1", "e4");
         await settleAndShow();
     };
@@ -728,32 +1300,28 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     };
 
     /* ---------- the race, on the map ---------- */
-    // Two tagged coins launch from racer in the same instant along parallel
-    // wires; a double-line gate (the UNIQUE(stream, version) slot) stands on
-    // the route. The responses decide who passes through to alice and who is
-    // turned back with the money still at home.
     async function raceOnMap([a, b]) {
         const map = ensureMap();
         const from = centerOf(nodeFor("racer"));
         const to = centerOf(nodeFor("alice"));
         const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
         const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
-        const n = { x: -(to.y - from.y) / len, y: (to.x - from.x) / len }; // perpendicular
+        const n = { x: -(to.y - from.y) / len, y: (to.x - from.x) / len };
         const gate = el("div", "gate-mark");
-        gate.append(el("span", "", "UNIQUE(stream, version) \u2014 one slot"));
+        gate.append(el("span", "", "UNIQUE(stream, version) — one slot"));
         gate.style.left = mid.x + "px";
         gate.style.top = mid.y + "px";
         map.append(gate);
-        const svg = map.querySelector("svg");
+        const svgM = map.querySelector("svg");
         const lanes = [{ r: a, tag: "A", off: 10 }, { r: b, tag: "B", off: -10 }].map((lane) => {
             const o = { x: n.x * lane.off, y: n.y * lane.off };
-            const wire = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            const wire = document.createElementNS(SVGNS, "line");
             wire.setAttribute("x1", String(from.x + o.x));
             wire.setAttribute("y1", String(from.y + o.y));
             wire.setAttribute("x2", String(mid.x + o.x));
             wire.setAttribute("y2", String(mid.y + o.y));
             wire.classList.add("flow");
-            svg.append(wire);
+            svgM.append(wire);
             return { ...lane, o, wire, won: lane.r.json?.status === "completed" };
         });
         const finish = async () => {
@@ -763,43 +1331,41 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         };
         if (noMotion) {
             for (const l of lanes) {
-                if (l.won) { stampAt("\u2713 " + l.tag + " completed", "ok", to); flashNode(nodeFor("alice")); }
-                else { l.wire.classList.add("bad"); stampAt("\u2715 " + l.tag + " " + (l.r.json?.failureReason ?? "failed"), "bad", mid); }
+                if (l.won) { stampAt("✓ " + l.tag + " completed", "ok", to); flashNode(nodeFor("alice")); }
+                else { l.wire.classList.add("bad"); stampAt("✕ " + l.tag + " " + (l.r.json?.failureReason ?? "failed"), "bad", mid); }
             }
             await finish();
             return;
         }
         const coins = lanes.map((l) => {
-            const coin = el("div", "coin", l.tag + " \u00B7 " + money(5000, ""));
+            const coin = el("div", "coin", l.tag + " · " + money(5000, ""));
             map.append(coin);
             const half = { w: coin.offsetWidth / 2, h: coin.offsetHeight / 2 };
             const tf = (pt) => `translate(${pt.x + l.o.x - half.w}px, ${pt.y + l.o.y - half.h}px)`;
             coin.style.transform = tf(from);
             return { ...l, coin, tf };
         });
-        // Frame 1: the same instant, side by side, toward the gate.
         await Promise.all(coins.map((l) =>
             glide(l.coin, [{ transform: l.tf(from) }, { transform: l.tf(mid) }], 900)));
-        caption("<strong>Both are at the gate.</strong> Each append wants the same next version of the racer stream \u2014 and the UNIQUE(stream, version) row can exist once.");
+        caption("<strong>Both are at the gate.</strong> Each append wants the same next version of the racer stream — and the UNIQUE(stream, version) row can exist once.");
         await new Promise(r => setTimeout(r, 700));
-        // Frame 2: the responses decide.
         await Promise.all(coins.map(async (l) => {
             if (l.won) {
-                const cont = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                const cont = document.createElementNS(SVGNS, "line");
                 cont.setAttribute("x1", String(mid.x + l.o.x));
                 cont.setAttribute("y1", String(mid.y + l.o.y));
                 cont.setAttribute("x2", String(to.x));
                 cont.setAttribute("y2", String(to.y));
                 cont.classList.add("flow");
-                svg.append(cont);
+                svgM.append(cont);
                 await glide(l.coin, [{ transform: l.tf(mid) }, { transform: `translate(${to.x - 30}px, ${to.y - 10}px)` }], 500);
-                stampAt("\u2713 " + l.tag + " completed", "ok", to);
+                stampAt("✓ " + l.tag + " completed", "ok", to);
                 flashNode(nodeFor("alice"));
                 setTimeout(() => cont.remove(), 1200);
             } else {
                 l.coin.classList.add("bad");
                 l.wire.classList.add("bad");
-                stampAt("\u2715 " + l.tag + " " + (l.r.json?.failureReason ?? "failed"), "bad", { x: mid.x + l.o.x, y: mid.y + l.o.y });
+                stampAt("✕ " + l.tag + " " + (l.r.json?.failureReason ?? "failed"), "bad", { x: mid.x + l.o.x, y: mid.y + l.o.y });
                 await glide(l.coin, [{ transform: l.tf(mid) }, { transform: l.tf(from) }], 550);
                 stampAt("stayed home", "warn", from);
             }
@@ -808,14 +1374,13 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         await finish();
     }
 
-    /* ---------- the race ---------- */    /* ---------- the race ---------- */
     $("race").onclick = async () => {
         caption("<strong>1 · Setting up.</strong> Every run retires the old racer and opens a fresh one, funded with exactly 50.00 — enough for one of the two transfers. Watch the 50.00 arrive first.");
         const src = await openAccount("racer");
         const dst = await ensureAccount("alice");
         await api("POST", "/api/accounts/" + src + "/deposits", { amount: 5000, currency: "USD" }, idem());
-        await moveMoney({ amount: 5000, from: "world", to: "racer" }); // the funding, visibly
-        await refreshBalances(); // the racer card catches up before the coins launch
+        await moveMoney({ amount: 5000, from: "world", to: "racer" });
+        await refreshBalances();
         caption("<strong>2 · Fired in the same instant.</strong> Requests A and B leave together — watch the map: two wires from racer, one gate on the route.");
         const [a, b] = await Promise.all([
             api("POST", "/api/transfers", transferBody(src, dst, 5000), idem(), "A"),
@@ -826,7 +1391,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const loser = [a, b].find(r => r.json?.status === "failed");
         await raceOnMap([a, b]);
         caption(done === 1
-            ? "<strong>3 · Exactly one won.</strong> The gate admitted one append; the loser\u2019s <em>" + (loser?.json?.failureReason ?? "?") + "</em> is the losing side of the same race \u2014 refused before the hold, or beaten to the version slot mid-flight. Match A and B in the exchange; the journal keeps one hold\u2192debit trail. Rerun it \u2014 the winner may swap, the invariant never does."
+            ? "<strong>3 · Exactly one won.</strong> The gate admitted one append; the loser’s <em>" + (loser?.json?.failureReason ?? "?") + "</em> is the losing side of the same race — refused before the hold, or beaten to the version slot mid-flight. Match A and B in the exchange; the journal keeps one hold→debit trail. Rerun it — the winner may swap, the invariant never does."
             : "<strong>Invariant check: " + done + " completed.</strong> Expected exactly 1 — inspect A and B in the exchange.", done === 1 ? "ok" : "bad");
         await settleAndShow();
     };
@@ -873,7 +1438,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         const original = btn.onclick;
         let inflight = 0;
         btn.onclick = async () => {
-            inflight++; // every click is another concurrent run; the cursor counts them
+            inflight++;
             btn.dataset.inflight = String(inflight);
             btn.classList.add("busy");
             try {
@@ -887,8 +1452,14 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             }
         };
     }
-
     $("nlq").addEventListener("keydown", (e) => { if (e.key === "Enter" && !$("nlgo").disabled) $("nlgo").click(); });
+
+    /* ---------- boot ---------- */
+    buildNodes();
+    drawRails();
+    new ResizeObserver(() => drawRails()).observe(stage);
+    outboxLoop();
+    projectionsLoop();
 })();
 </script>
 </body>
