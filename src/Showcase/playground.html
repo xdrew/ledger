@@ -712,7 +712,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             if (!res.ok) continue;
             const data = await res.json();
             for (const e of data.events) {
-                all.push({ ...e, streamType: data.streamType, label: s.label });
+                all.push({ ...e, streamType: data.streamType, label: s.label, sid: s.id });
                 if (data.streamType === "account") state.head[s.id] = Math.max(state.head[s.id] ?? 0, e.version);
             }
         }
@@ -743,7 +743,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             tape.append(row);
             bump("journal");
             // feed the very same event into the flow diagram (write-side hop → log → fan-out)
-            flowIngest({ pos: e.globalPosition, type: e.type, corr: e.correlationId || "live", acct: e.streamType === "account" ? e.label : null });
+            flowIngest({ pos: e.globalPosition, type: e.type, corr: e.correlationId || null, sid: e.sid, slabel: e.label, acct: e.streamType === "account" ? e.label : null });
         }
         tape.lastElementChild?.scrollIntoView({ block: "nearest" });
     }
@@ -1091,11 +1091,19 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         }
         return col;
     }
-    function buildSagaLane(corr) {
+    // A lane is keyed by the transfer's own stream id (always unique), NOT the
+    // correlation id — which the backend may leave null, collapsing a race's two
+    // sagas onto one lane. label/hue derive from that id so lanes stay distinct.
+    const sagaSubline = () => {
+        if (sagaLanes.size > 1) return sagaLanes.size + " transfers in flight";
+        const only = [...sagaLanes.values()][0];
+        return only ? (only.corr ? "corr " + only.corr : "transfer " + only.label) : "";
+    };
+    function buildSagaLane(label, hueSeed) {
         const lane = el("div", "saga-lane");
         const hd = el("div", "lane-hd");
-        const dot = el("span", "ldot"); dot.style.background = "hsl(" + corrHue(corr) + " 55% 55%)";
-        hd.append(dot, document.createTextNode((corr || "").slice(0, 4)));
+        const dot = el("span", "ldot"); dot.style.background = "hsl(" + corrHue(hueSeed) + " 55% 55%)";
+        hd.append(dot, document.createTextNode(label));
         lane.append(hd);
         const cells = new Map();
         for (const r of SAGA_ROWS) {
@@ -1107,33 +1115,35 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         }
         return { lane, cells };
     }
-    function sagaLaneFor(corr) {
+    function sagaLaneFor(key, label, corr) {
         const s = $("saga");
         if (!s.classList.contains("on")) {
             s.classList.add("on");
             nodeEls.aggregate?.querySelector(".comp")?.style.setProperty("display", "none");
         }
-        let entry = sagaLanes.get(corr);
+        let entry = sagaLanes.get(key);
         if (!entry) {
-            entry = buildSagaLane(corr);
-            sagaLanes.set(corr, entry);
+            entry = buildSagaLane(label, key);
+            entry.label = label;
+            entry.corr = corr;
+            sagaLanes.set(key, entry);
             $("sagaMatrix").append(entry.lane);
-            $("sagaCorr").textContent = sagaLanes.size > 1 ? sagaLanes.size + " transfers in flight" : "corr " + corr;
+            $("sagaCorr").textContent = sagaSubline();
         }
         sagaDock();
         return entry;
     }
-    function sagaRemove(corr) {
-        const entry = sagaLanes.get(corr);
+    function sagaRemove(key) {
+        const entry = sagaLanes.get(key);
         if (!entry) return;
-        sagaLanes.delete(corr);
+        sagaLanes.delete(key);
         entry.lane.remove();
         if (!sagaLanes.size) {
             $("saga").classList.remove("on");
             nodeEls.aggregate?.querySelector(".comp")?.style.removeProperty("display");
             $("sagaNote").textContent = "";
         } else {
-            $("sagaCorr").textContent = sagaLanes.size > 1 ? sagaLanes.size + " transfers in flight" : "corr " + [...sagaLanes.keys()][0];
+            $("sagaCorr").textContent = sagaSubline();
         }
         sagaDock();
     }
@@ -1149,16 +1159,24 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     }
     function driveSaga(ev) {
         const s = short(ev.type);
-        if (!SSTATE[s] && s !== "hold_released") return;
-        const entry = s === "transfer_initiated" ? sagaLaneFor(ev.corr) : sagaLanes.get(ev.corr);
+        // compensation arrives on the account stream — attach the note to the
+        // matching transfer lane (by corr) or the only lane if we can't match.
+        if (s === "hold_released") {
+            const e = ev.corr ? [...sagaLanes.values()].find(x => x.corr === ev.corr) : (sagaLanes.size === 1 ? [...sagaLanes.values()][0] : null);
+            if (e) $("sagaNote").textContent = "↩ HoldReleased — reserved funds returned (compensation)";
+            return;
+        }
+        if (!SSTATE[s]) return;
+        const key = ev.sid || ev.corr || "saga";           // the transfer's stream — unique per saga
+        const label = ev.slabel && ev.slabel !== "race" ? ev.slabel : String(key).slice(0, 4);
+        const entry = s === "transfer_initiated" ? sagaLaneFor(key, label, ev.corr) : sagaLanes.get(key);
         if (!entry) return;
-        if (s === "hold_released") { $("sagaNote").textContent = (ev.corr || "").slice(0, 4) + " ↩ HoldReleased — reserved funds returned (compensation)"; return; }
         if (s === "transfer_initiated") laneEnter(entry, "Initiated");
         else if (s === "transfer_held") { laneGuard(entry, "hold", true); laneEnter(entry, "Held"); }
         else if (s === "transfer_posted") { laneGuard(entry, "post", true); laneEnter(entry, "Posted"); }
         else if (s === "transfer_completed") { laneGuard(entry, "settle", true); laneEnter(entry, "Completed"); }
         else if (s === "transfer_failed") laneFail(entry);
-        if (s === "transfer_completed" || s === "transfer_failed") setTimeout(() => sagaRemove(ev.corr), 3400);
+        if (s === "transfer_completed" || s === "transfer_failed") setTimeout(() => sagaRemove(key), 3400);
     }
 
     function appendLogRow(ev) {
@@ -1170,8 +1188,8 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         t.append(el("span", "by", " · " + emitterShort(ev)));
         row.append(t);
         const d = el("div", "d");
-        d.style.background = `hsl(${corrHue(ev.corr)} 55% 55%)`;
-        d.title = "correlation " + ev.corr;
+        d.style.background = `hsl(${corrHue(ev.corr || ev.sid || "x")} 55% 55%)`;
+        d.title = ev.corr ? "correlation " + ev.corr : "stream " + (ev.slabel || "");
         row.append(d);
         rows.append(row);
         while (rows.children.length > 5) rows.firstElementChild.remove();
@@ -1279,9 +1297,11 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         flowDraining = true;
         while (flowQueue.length) {
             const ev = flowQueue.shift();
-            // a fresh correlation id means a new command arrived — show it enter the API
-            if (!seenCorr.has(ev.corr)) {
-                seenCorr.add(ev.corr);
+            // a fresh correlation id (or stream, when the backend omits corr) means a
+            // new command arrived — show it enter the API
+            const ck = ev.corr || ev.sid;
+            if (!seenCorr.has(ck)) {
+                seenCorr.add(ck);
                 dispatched += 1;
                 setSub("command", "dispatched " + dispatched);
                 flash("command");
