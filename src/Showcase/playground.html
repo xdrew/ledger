@@ -1153,7 +1153,8 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     }
     const laneGuard = (entry, phase, ok) => entry.cells.get(phase)?.classList.add(ok ? "ok" : "bad");
     function laneFail(entry) {
-        entry.cells.forEach(cell => { if (cell.dataset.kind === "state") cell.classList.remove("active"); });
+        // keep the states it did reach lit (done), turn only Failed red
+        entry.cells.forEach((cell, key) => { if (cell.dataset.kind === "state" && cell.classList.contains("active") && key !== "Failed") { cell.classList.remove("active"); cell.classList.add("done"); } });
         for (const key of ["hold", "post", "settle"]) { const c = entry.cells.get(key); if (c && !c.classList.contains("ok")) { c.classList.add("bad"); break; } }
         entry.cells.get("Failed")?.classList.add("failed");
     }
@@ -1482,7 +1483,15 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
             api("POST", "/api/transfers", transferBody(src, dst, 5000), idem(), "A"),
             api("POST", "/api/transfers", transferBody(src, dst, 5000), idem(), "B"),
         ]);
-        for (const r of [a, b]) if (r.json?.transferId) track("transfers", r.json.transferId, "race");
+        // Register both sagas up front so both lanes appear the moment the race
+        // fires — otherwise, when the backend commits one transfer's whole saga
+        // before the other starts, the second lane would only show up at the end.
+        for (const r of [a, b]) {
+            const id = r.json?.transferId;
+            if (!id) continue;
+            track("transfers", id, "race");
+            laneEnter(sagaLaneFor(id, id.slice(-4), null), "Initiated");
+        }
         const done = [a, b].filter(r => r.json?.status === "completed").length;
         const loser = [a, b].find(r => r.json?.status === "failed");
         await raceOnMap([a, b]);
