@@ -337,54 +337,61 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 #stage .elabel {
     position: absolute; transform: translate(-50%, -50%);
     font-size: 11.5px; color: var(--faint); white-space: nowrap;
-    background: rgba(14,31,26,.82); padding: 1px 7px; z-index: 1; pointer-events: none;
+    background: rgba(14,31,26,.92); padding: 1px 7px; z-index: 4; pointer-events: none;
 }
 /* runtime process zones */
 #stage .zone { position: absolute; top: 10px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); opacity: .85; z-index: 1; }
 #stage .zone-api { left: 16px; }
 #stage .zone-worker { right: 16px; }
 
-/* the saga state machine, unfolded downward from the aggregates block */
+/* the saga state machine, unfolded downward from the aggregates block. One
+   block; the steps are labelled once on the left and each in-flight transfer is
+   a lane column, so a race shows both sagas side by side without duplication. */
 #stage .saga {
-    position: absolute; z-index: 5; width: 230px;
+    position: absolute; z-index: 5;
     background: rgba(16,36,29,.98); border: 1px solid var(--paper-dim); border-top: 1px dashed #2E5647;
     padding: 8px 12px 10px;
     opacity: 0; transform: translateY(-6px); pointer-events: none;
     transition: opacity .22s ease, transform .22s ease;
 }
 #stage .saga.on { opacity: 1; transform: translateY(0); }
-#stage .saga-hd { margin-bottom: 8px; }
+#stage .saga-hd { margin-bottom: 6px; }
 #stage .saga-title { display: block; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
 #stage .saga-corr { display: block; font-size: 11px; color: #6E8578; margin-top: 1px; }
-#stage .saga-track { display: flex; flex-direction: column; }
-#stage .saga .sstate {
-    display: flex; align-items: center; gap: 8px;
-    border: 1px solid #395C4C; padding: 5px 9px; font-size: 13px; color: var(--paper-dim); background: var(--ink);
-}
-#stage .saga .sstate .sdot { width: 8px; height: 8px; border-radius: 50%; background: #395C4C; flex: 0 0 auto; }
-#stage .saga .sstate.done { border-color: var(--settle); color: var(--mint); }
-#stage .saga .sstate.done .sdot { background: var(--mint); }
-#stage .saga .sstate.active { border-color: var(--mint); color: var(--paper); box-shadow: 0 0 0 1px var(--mint); }
-#stage .saga .sstate.active .sdot { background: var(--mint); animation: sagablink 1s steps(2) infinite; }
 @keyframes sagablink { 50% { opacity: .3; } }
-@media (prefers-reduced-motion: reduce) { #stage .saga .sstate.active .sdot { animation: none; } }
-#stage .saga .sstate.fail { margin-left: 26px; margin-top: 5px; border-style: dashed; border-color: #5A3A34; color: var(--faint); }
-#stage .saga .sstate.fail.active { border-color: var(--red); color: var(--red); box-shadow: 0 0 0 1px var(--red); }
-#stage .saga .sstate.fail.active .sdot { background: var(--red); }
-#stage .saga .strans { display: flex; align-items: center; gap: 9px; padding: 3px 0; margin-left: 9px; position: relative; min-height: 20px; }
-#stage .saga .strans::before { content: ""; position: absolute; left: 9px; top: -2px; bottom: -2px; border-left: 1px dashed #395C4C; }
-#stage .saga .strans.ok::before { border-left-style: solid; border-color: var(--mint); }
-#stage .saga .strans.bad::before { border-left-color: var(--red); }
-#stage .saga .strans .sg { width: 15px; height: 15px; border-radius: 50%; border: 1px solid #6E8578; background: var(--ink); position: relative; z-index: 1; flex: 0 0 auto; margin-left: -8px; }
-#stage .saga .strans.ok .sg { border-color: var(--mint); }
-#stage .saga .strans.ok .sg::after { content: "\2713"; position: absolute; inset: 0; font-size: 10px; color: var(--mint); text-align: center; line-height: 14px; }
-#stage .saga .strans.bad .sg { border-color: var(--red); }
-#stage .saga .strans.bad .sg::after { content: "\2715"; position: absolute; inset: 0; font-size: 10px; color: var(--red); text-align: center; line-height: 14px; }
-#stage .saga .strans .sl { font-size: 11px; color: var(--faint); line-height: 1.2; }
-#stage .saga .strans .sl em { font-style: normal; color: #6E8578; }
-#stage .saga .strans.ok .sl { color: var(--mint); }
-#stage .saga .strans.bad .sl { color: var(--red); }
-#stage .saga-note { font-size: 11px; color: var(--amber); margin-top: 7px; min-height: 14px; line-height: 1.3; }
+
+#stage .saga-matrix { display: flex; gap: 8px; }
+#stage .saga-steps { flex: 1 1 auto; min-width: 0; }
+#stage .steps-hd, #stage .saga-lane .lane-hd { height: 15px; }
+#stage .saga-lane .lane-hd { font-size: 10px; color: var(--faint); display: flex; align-items: center; justify-content: center; gap: 3px; }
+#stage .saga-lane .lane-hd .ldot { width: 7px; height: 7px; border-radius: 50%; border: 1px solid rgba(0,0,0,.25); flex: 0 0 auto; }
+
+#stage .srow { display: flex; align-items: center; }
+#stage .srow.state { height: 24px; }
+#stage .srow.trans { height: 19px; }
+#stage .saga-steps .srow .lbl { font-size: 12px; color: var(--paper-dim); }
+#stage .saga-steps .srow.state .lbl { border: 1px solid #395C4C; padding: 2px 8px; width: 100%; background: var(--ink); }
+#stage .saga-steps .srow.state.fail .lbl { border-style: dashed; border-color: #5A3A34; color: var(--faint); margin-left: 16px; }
+#stage .saga-steps .srow.trans .lbl { font-size: 11px; color: var(--faint); padding-left: 16px; }
+#stage .saga-steps .srow.trans .lbl em { font-style: normal; color: #6E8578; }
+
+#stage .saga-lane { flex: 0 0 auto; width: 26px; display: flex; flex-direction: column; align-items: center; position: relative; }
+#stage .saga-lane::before { content: ""; position: absolute; top: 26px; bottom: 34px; left: 50%; border-left: 1px dashed #2E5647; }
+#stage .lcell { display: flex; align-items: center; justify-content: center; width: 100%; position: relative; z-index: 1; }
+#stage .lcell.state { height: 24px; }
+#stage .lcell.trans { height: 19px; }
+#stage .lcell .sdot { width: 9px; height: 9px; border-radius: 50%; background: #395C4C; }
+#stage .lcell.done .sdot { background: var(--mint); }
+#stage .lcell.active .sdot { background: var(--mint); box-shadow: 0 0 0 3px rgba(116,198,157,.22); animation: sagablink 1s steps(2) infinite; }
+#stage .lcell.fail .sdot { background: transparent; box-shadow: inset 0 0 0 1px #4A4A42; }
+#stage .lcell.fail.failed .sdot { background: var(--red); box-shadow: 0 0 0 3px rgba(224,68,42,.22); }
+@media (prefers-reduced-motion: reduce) { #stage .lcell.active .sdot { animation: none; } }
+#stage .lcell .sg { width: 13px; height: 13px; border-radius: 50%; border: 1px solid #6E8578; background: var(--ink); position: relative; }
+#stage .lcell.ok .sg { border-color: var(--mint); }
+#stage .lcell.ok .sg::after { content: "\2713"; position: absolute; inset: 0; font-size: 9px; color: var(--mint); text-align: center; line-height: 12px; }
+#stage .lcell.bad .sg { border-color: var(--red); }
+#stage .lcell.bad .sg::after { content: "\2715"; position: absolute; inset: 0; font-size: 9px; color: var(--red); text-align: center; line-height: 12px; }
+#stage .saga-note { font-size: 11px; color: var(--amber); margin-top: 6px; min-height: 14px; line-height: 1.3; }
 
 /* packets that travel the wires */
 #stage .pkt {
@@ -415,6 +422,8 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 /* flow footer — tempo + a short pipeline trace */
 .flowfoot { flex: 0 0 auto; border-top: 1px solid var(--line); padding: 8px 16px 10px; background: var(--ink); }
 .flowfoot .frow { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.flowfoot .frow button { width: auto; flex: 0 0 auto; padding: 4px 12px; font-size: 12.5px; }
+.flowfoot .frow button.on { background: var(--ink-3); color: var(--amber); border-color: var(--amber); }
 .flowfoot label.speed { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); flex: 0 0 auto; }
 .flowfoot input[type=range] { width: 150px; accent-color: var(--mint); }
 .flowfoot .lag { margin-left: auto; font-size: 11.5px; }
@@ -503,18 +512,10 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
                     <svg id="rails" aria-hidden="true"></svg>
                     <div class="zone zone-api">◖ api process · roadrunner http — synchronous write</div>
                     <div class="zone zone-worker">worker process · roadrunner loop — async catch-up ◗</div>
+                    <!-- one saga block; a lane column per in-flight transfer (race → two) -->
                     <div class="saga" id="saga" aria-hidden="true">
                         <div class="saga-hd"><span class="saga-title">TransferOrchestrator · saga</span><span class="saga-corr" id="sagaCorr"></span></div>
-                        <div class="saga-track">
-                            <div class="sstate" data-s="Initiated"><i class="sdot"></i>Initiated</div>
-                            <div class="strans" data-t="hold"><i class="sg"></i><span class="sl">hold <em>· Account.hold</em></span></div>
-                            <div class="sstate" data-s="Held"><i class="sdot"></i>Held</div>
-                            <div class="strans" data-t="post"><i class="sg"></i><span class="sl">post <em>· Ledger.post</em></span></div>
-                            <div class="sstate" data-s="Posted"><i class="sdot"></i>Posted</div>
-                            <div class="strans" data-t="settle"><i class="sg"></i><span class="sl">settle <em>· Account.debit+credit</em></span></div>
-                            <div class="sstate" data-s="Completed"><i class="sdot"></i>Completed</div>
-                            <div class="sstate fail" data-s="Failed"><i class="sdot"></i>Failed</div>
-                        </div>
+                        <div class="saga-matrix" id="sagaMatrix"></div>
                         <div class="saga-note" id="sagaNote"></div>
                     </div>
                     <div class="legend-note">
@@ -525,6 +526,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
                 </div>
                 <div class="flowfoot">
                     <div class="frow">
+                        <button id="fpause" title="Freeze every packet, wire and saga to inspect a frame">⏸ pause</button>
                         <label class="speed" for="fspeed">tempo</label>
                         <input type="range" id="fspeed" min="0" max="100" value="35">
                         <span class="lag"><span class="eyebrow" style="margin:0">trace</span> <span id="lagTag"></span></span>
@@ -997,6 +999,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
     /* ---------- packet travel along a wire ---------- */
     async function movePkt(from, to, { label, cls = "", ms = 900 }) {
+        await flowGate();   // hold new packets while paused, so nothing spawns mid-freeze
         const seg = trim(ptOf(from), ptOf(to), pad(from), pad(to));
         const a = seg.a, b = seg.b;
         let wire = null;
@@ -1047,57 +1050,115 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     }
 
     /* ---------- the saga's own state machine, unfolded during a transfer ---------- */
+    // The vertical track, labelled once; each in-flight transfer becomes a lane
+    // column of markers beside it (a race → two lanes in the same block).
     const SSTATE = { transfer_initiated: "Initiated", transfer_held: "Held", transfer_posted: "Posted", transfer_completed: "Completed", transfer_failed: "Failed" };
+    const SAGA_ROWS = [
+        { kind: "state", key: "Initiated" },
+        { kind: "trans", key: "hold", label: "hold", em: "· Account.hold" },
+        { kind: "state", key: "Held" },
+        { kind: "trans", key: "post", label: "post", em: "· Ledger.post" },
+        { kind: "state", key: "Posted" },
+        { kind: "trans", key: "settle", label: "settle", em: "· Account.debit+credit" },
+        { kind: "state", key: "Completed" },
+        { kind: "state", key: "Failed", fail: true },
+    ];
+    const sagaLanes = new Map();   // corr -> { lane, cells: Map(rowKey -> cell) }
+
+    // Dock the block flush under the aggregates block; cap its width at the gap
+    // before the paper event log so a second lane never slides under it.
     function sagaDock() {
         const s = $("saga");
         if (!s.classList.contains("on") || !nodeEls.aggregate) return;
         const r = nodeEls.aggregate.getBoundingClientRect(), sr = stage.getBoundingClientRect();
-        s.style.left = (r.left - sr.left) + "px";
+        const left = r.left - sr.left;
+        s.style.left = left + "px";
         s.style.top = (r.bottom - sr.top - 1) + "px";
-        s.style.width = r.width + "px";
+        s.style.minWidth = r.width + "px";
+        const logLeft = nodeEls.log ? nodeEls.log.getBoundingClientRect().left - sr.left : stage.clientWidth;
+        s.style.maxWidth = Math.max(r.width, logLeft - left - 14) + "px";
     }
-    function sagaShow(corr) {
+    function buildSagaSteps() {
+        const col = el("div", "saga-steps");
+        col.append(el("div", "steps-hd"));
+        for (const r of SAGA_ROWS) {
+            const row = el("div", "srow " + r.kind + (r.fail ? " fail" : ""));
+            const lbl = el("span", "lbl");
+            if (r.kind === "state") lbl.textContent = r.key;
+            else lbl.append(document.createTextNode(r.label + " "), el("em", "", r.em));
+            row.append(lbl);
+            col.append(row);
+        }
+        return col;
+    }
+    function buildSagaLane(corr) {
+        const lane = el("div", "saga-lane");
+        const hd = el("div", "lane-hd");
+        const dot = el("span", "ldot"); dot.style.background = "hsl(" + corrHue(corr) + " 55% 55%)";
+        hd.append(dot, document.createTextNode((corr || "").slice(0, 4)));
+        lane.append(hd);
+        const cells = new Map();
+        for (const r of SAGA_ROWS) {
+            const cell = el("div", "lcell " + r.kind + (r.fail ? " fail" : ""));
+            cell.dataset.kind = r.kind;
+            cell.append(el("span", r.kind === "state" ? "sdot" : "sg"));
+            lane.append(cell);
+            cells.set(r.key, cell);
+        }
+        return { lane, cells };
+    }
+    function sagaLaneFor(corr) {
         const s = $("saga");
-        s.querySelectorAll(".sstate").forEach(n => n.classList.remove("active", "done"));
-        s.querySelectorAll(".strans").forEach(n => n.classList.remove("ok", "bad"));
-        $("sagaNote").textContent = "";
-        $("sagaCorr").textContent = corr ? "corr " + corr : "";
-        nodeEls.aggregate?.querySelector(".comp")?.style.setProperty("display", "none");
-        s.classList.add("on");
+        if (!s.classList.contains("on")) {
+            s.classList.add("on");
+            nodeEls.aggregate?.querySelector(".comp")?.style.setProperty("display", "none");
+        }
+        let entry = sagaLanes.get(corr);
+        if (!entry) {
+            entry = buildSagaLane(corr);
+            sagaLanes.set(corr, entry);
+            $("sagaMatrix").append(entry.lane);
+            $("sagaCorr").textContent = sagaLanes.size > 1 ? sagaLanes.size + " transfers in flight" : "corr " + corr;
+        }
+        sagaDock();
+        return entry;
+    }
+    function sagaRemove(corr) {
+        const entry = sagaLanes.get(corr);
+        if (!entry) return;
+        sagaLanes.delete(corr);
+        entry.lane.remove();
+        if (!sagaLanes.size) {
+            $("saga").classList.remove("on");
+            nodeEls.aggregate?.querySelector(".comp")?.style.removeProperty("display");
+            $("sagaNote").textContent = "";
+        } else {
+            $("sagaCorr").textContent = sagaLanes.size > 1 ? sagaLanes.size + " transfers in flight" : "corr " + [...sagaLanes.keys()][0];
+        }
         sagaDock();
     }
-    const sagaHide = () => {
-        $("saga").classList.remove("on");
-        nodeEls.aggregate?.querySelector(".comp")?.style.removeProperty("display");
-    };
-    function sagaEnter(stateName) {
-        const s = $("saga");
-        s.querySelectorAll(".sstate.active").forEach(n => { n.classList.remove("active"); if (!n.classList.contains("fail")) n.classList.add("done"); });
-        s.querySelector('.sstate[data-s="' + stateName + '"]')?.classList.add("active");
-        sagaDock();
+    function laneEnter(entry, stateKey) {
+        entry.cells.forEach((cell, key) => { if (cell.dataset.kind === "state" && cell.classList.contains("active")) { cell.classList.remove("active"); if (key !== "Failed") cell.classList.add("done"); } });
+        entry.cells.get(stateKey)?.classList.add("active");
     }
-    const sagaGuard = (phase, ok) => { $("saga").querySelector('.strans[data-t="' + phase + '"]')?.classList.add(ok ? "ok" : "bad"); sagaDock(); };
-    function sagaFail() {
-        const s = $("saga");
-        s.querySelectorAll(".sstate.active").forEach(n => n.classList.remove("active"));
-        s.querySelector('.sstate[data-s="Failed"]')?.classList.add("active");
-        sagaDock();
+    const laneGuard = (entry, phase, ok) => entry.cells.get(phase)?.classList.add(ok ? "ok" : "bad");
+    function laneFail(entry) {
+        entry.cells.forEach(cell => { if (cell.dataset.kind === "state") cell.classList.remove("active"); });
+        for (const key of ["hold", "post", "settle"]) { const c = entry.cells.get(key); if (c && !c.classList.contains("ok")) { c.classList.add("bad"); break; } }
+        entry.cells.get("Failed")?.classList.add("failed");
     }
-    const sagaNote = (text) => { $("sagaNote").textContent = text; sagaDock(); };
     function driveSaga(ev) {
         const s = short(ev.type);
-        if (s === "transfer_initiated") sagaShow(ev.corr);
-        if (s === "hold_released") sagaNote("↩ HoldReleased — reserved funds returned to available (compensation)");
-        if (SSTATE[s]) {
-            if (s === "transfer_failed") sagaFail();
-            else {
-                sagaEnter(SSTATE[s]);
-                if (s === "transfer_held") sagaGuard("hold", true);
-                else if (s === "transfer_posted") sagaGuard("post", true);
-                else if (s === "transfer_completed") sagaGuard("settle", true);
-            }
-        }
-        if (s === "transfer_completed" || s === "transfer_failed") setTimeout(() => sagaHide(), 3200);
+        if (!SSTATE[s] && s !== "hold_released") return;
+        const entry = s === "transfer_initiated" ? sagaLaneFor(ev.corr) : sagaLanes.get(ev.corr);
+        if (!entry) return;
+        if (s === "hold_released") { $("sagaNote").textContent = (ev.corr || "").slice(0, 4) + " ↩ HoldReleased — reserved funds returned (compensation)"; return; }
+        if (s === "transfer_initiated") laneEnter(entry, "Initiated");
+        else if (s === "transfer_held") { laneGuard(entry, "hold", true); laneEnter(entry, "Held"); }
+        else if (s === "transfer_posted") { laneGuard(entry, "post", true); laneEnter(entry, "Posted"); }
+        else if (s === "transfer_completed") { laneGuard(entry, "settle", true); laneEnter(entry, "Completed"); }
+        else if (s === "transfer_failed") laneFail(entry);
+        if (s === "transfer_completed" || s === "transfer_failed") setTimeout(() => sagaRemove(ev.corr), 3400);
     }
 
     function appendLogRow(ev) {
@@ -1136,6 +1197,20 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
     let outboxCkpt = 0, projCkpt = 0, published = 0, dispatched = 0;
     const logStore = [];
     let speedMs = () => 1750 - ($("fspeed").value / 100) * 1200;
+
+    /* ---------- freeze: stop every packet, wire and saga on the stage ---------- */
+    let flowPaused = false;
+    const flowGate = async () => { while (flowPaused) await sleep(120); };
+    function setFlowPaused(p) {
+        flowPaused = p;
+        // freeze/thaw all in-flight animations on the stage (packets, marching wires,
+        // saga blink) — new ones are held by flowGate() so nothing escapes the freeze.
+        stage.getAnimations({ subtree: true }).forEach(a => p ? a.pause() : a.play());
+        const btn = $("fpause");
+        btn.textContent = p ? "▶ resume" : "⏸ pause";
+        btn.classList.toggle("on", p);
+    }
+    $("fpause").addEventListener("click", () => setFlowPaused(!flowPaused));
 
     function appendEvent(ev) {
         head += 1;
@@ -1456,6 +1531,7 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
 
     /* ---------- boot ---------- */
     buildNodes();
+    $("sagaMatrix").append(buildSagaSteps());   // the step labels, once; lanes join per transfer
     drawRails();
     new ResizeObserver(() => drawRails()).observe(stage);
     outboxLoop();
