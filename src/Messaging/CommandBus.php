@@ -64,6 +64,7 @@ final readonly class CommandBus
             id: $id,
             conversationId: $conversationId,
             causeId: null,
+            replyCorrelationId: null,
             kind: Kind::Command,
             origin: self::ORIGIN,
             createdAt: $this->clock->now(),
