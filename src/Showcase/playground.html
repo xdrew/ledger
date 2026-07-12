@@ -1168,7 +1168,8 @@ header .key label { font-size: 11px; letter-spacing: .14em; text-transform: uppe
         }
         if (!SSTATE[s]) return;
         const key = ev.sid || ev.corr || "saga";           // the transfer's stream — unique per saga
-        const label = ev.slabel && ev.slabel !== "race" ? ev.slabel : String(key).slice(0, 4);
+        // UUIDv7 ids share a time-ordered prefix, so show the tail (the random part)
+        const label = ev.slabel && ev.slabel !== "race" ? ev.slabel : String(key).slice(-4);
         const entry = s === "transfer_initiated" ? sagaLaneFor(key, label, ev.corr) : sagaLanes.get(key);
         if (!entry) return;
         if (s === "transfer_initiated") laneEnter(entry, "Initiated");
