@@ -1,6 +1,11 @@
 # syntax=docker/dockerfile:1
 # Production image: multi-stage, non-root. One image runs the API or the worker,
 # selected by the entrypoint role. The dev image (Dockerfile) stays for tooling.
+#
+# php:8.5-cli is a floating tag: a rebuild picks up the latest 8.5 patch release.
+# To ship a PHP security release, push a new commit rather than re-running CI:
+# the image is tagged by commit sha and the cluster pulls IfNotPresent, so a
+# rebuilt image under the same tag never reaches the pods.
 
 # --- builder: production dependencies only ---
 FROM php:8.5-cli AS builder
